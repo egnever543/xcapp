@@ -2,6 +2,15 @@ import { redirect } from "next/navigation";
 import { plans } from "@/lib/plans";
 import { getSessionLead } from "@/lib/session";
 
+// Screenshots do app exibidos na página de compra.
+// Substitua os arquivos em /public/app pelos screenshots reais (mesmos nomes),
+// ou troque os caminhos abaixo.
+const appScreens = [
+  { src: "/app/screenshot-1.svg", alt: "Tela inicial do app xciptv" },
+  { src: "/app/screenshot-2.svg", alt: "Lista de canais no app xciptv" },
+  { src: "/app/screenshot-3.svg", alt: "Player de vídeo do app xciptv" },
+];
+
 export default async function PlanosPage() {
   const lead = await getSessionLead();
 
@@ -15,13 +24,41 @@ export default async function PlanosPage() {
       {/* Cabeçalho */}
       <header className="border-b border-zinc-200 bg-brand-black text-white">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <span className="text-lg font-semibold tracking-tight">X IPTV</span>
+          <span className="text-lg font-semibold tracking-tight">xc<span className="text-brand-blue">iptv</span></span>
           <span className="text-sm text-zinc-300">{lead.email}</span>
         </div>
       </header>
 
+      {/* Imagens do app — para o cliente confirmar que é o app certo */}
+      <section
+        id="app"
+        className="mx-auto w-full max-w-6xl px-6 pt-16 pb-4 text-center"
+      >
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Conheça o app <span className="text-brand-blue">xciptv</span>
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600">
+          Confira o app antes de comprar e garanta que é exatamente o que você
+          procura.
+        </p>
+        <div className="mt-10 grid grid-cols-2 justify-items-center gap-6 sm:grid-cols-3">
+          {appScreens.map((screen) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={screen.src}
+              src={screen.src}
+              alt={screen.alt}
+              width={360}
+              height={640}
+              loading="lazy"
+              className="h-auto w-full max-w-[240px] rounded-2xl border border-zinc-200 shadow-md"
+            />
+          ))}
+        </div>
+      </section>
+
       {/* Planos */}
-      <section id="planos" className="mx-auto w-full max-w-6xl px-6 py-16">
+      <section id="planos" className="mx-auto w-full max-w-6xl px-6 pt-8 pb-16">
         <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
           Escolha sua licença
         </h2>
@@ -71,7 +108,7 @@ export default async function PlanosPage() {
       {/* Rodapé */}
       <footer className="mt-auto border-t border-zinc-200 py-8">
         <div className="mx-auto w-full max-w-6xl px-6 text-center text-sm text-zinc-500">
-          © {new Date().getFullYear()} X IPTV. Todos os direitos reservados.
+          © {new Date().getFullYear()} xciptv. Todos os direitos reservados.
         </div>
       </footer>
     </div>
