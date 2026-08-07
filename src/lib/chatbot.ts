@@ -66,9 +66,7 @@ export async function sendLeadToChatbot(lead: {
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-    // Envia também no corpo, por garantia.
-    body: JSON.stringify({ email: lead.email, phone: lead.phone }),
+    headers: { Accept: "*/*" },
     // Não deixa o pagamento travar por cache.
     cache: "no-store",
   });

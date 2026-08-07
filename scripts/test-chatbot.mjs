@@ -23,17 +23,14 @@ const target = new URL(url);
 target.searchParams.set("Content-Type", "application/json");
 target.searchParams.set("senderPhone", phone.replace(/\D/g, ""));
 
-const payload = { email, phone };
-
 console.log("POST", target.toString());
-console.log("Body:", JSON.stringify(payload));
+console.log("(sem corpo — parâmetros só na query string)");
 console.log("----------------------------------------");
 
 try {
   const res = await fetch(target, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-    body: JSON.stringify(payload),
+    headers: { Accept: "*/*" },
   });
 
   const raw = await res.text();
