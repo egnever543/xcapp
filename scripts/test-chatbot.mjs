@@ -17,7 +17,7 @@ const url =
 const email = process.argv[2] || "teste@example.com";
 const phone = process.argv[3] || "11999999999";
 
-const payload = { email, phone };
+const payload = { email, phone, senderPhone: phone };
 
 console.log("POST", url);
 console.log("Body:", JSON.stringify(payload));

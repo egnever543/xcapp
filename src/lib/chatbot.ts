@@ -58,10 +58,16 @@ export async function sendLeadToChatbot(lead: {
   email: string;
   phone: string;
 }): Promise<ChatbotResult> {
+  const body = {
+    ...lead,
+    // A API espera o telefone também no campo senderPhone.
+    senderPhone: lead.phone,
+  };
+
   const res = await fetch(CHATBOT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "*/*" },
-    body: JSON.stringify(lead),
+    body: JSON.stringify(body),
     // Não deixa o pagamento travar por cache.
     cache: "no-store",
   });
