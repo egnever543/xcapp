@@ -3,12 +3,15 @@ import { plans } from "@/lib/plans";
 import { getSessionLead } from "@/lib/session";
 
 // Screenshots do app exibidos na página de compra.
-// Substitua os arquivos em /public/app pelos screenshots reais (mesmos nomes),
-// ou troque os caminhos abaixo.
+// Para adicionar mais imagens, coloque os arquivos em /public/app e
+// acrescente novas entradas (src/alt/width/height) neste array.
 const appScreens = [
-  { src: "/app/screenshot-1.svg", alt: "Tela inicial do app xciptv" },
-  { src: "/app/screenshot-2.svg", alt: "Lista de canais no app xciptv" },
-  { src: "/app/screenshot-3.svg", alt: "Player de vídeo do app xciptv" },
+  {
+    src: "/app/xtream-login.png",
+    alt: "Tela de login Xtream Codes do app xciptv",
+    width: 1332,
+    height: 746,
+  },
 ];
 
 export default async function PlanosPage() {
@@ -41,17 +44,17 @@ export default async function PlanosPage() {
           Confira o app antes de comprar e garanta que é exatamente o que você
           procura.
         </p>
-        <div className="mt-10 grid grid-cols-2 justify-items-center gap-6 sm:grid-cols-3">
+        <div className="mt-10 flex flex-wrap justify-center gap-6">
           {appScreens.map((screen) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={screen.src}
               src={screen.src}
               alt={screen.alt}
-              width={360}
-              height={640}
+              width={screen.width}
+              height={screen.height}
               loading="lazy"
-              className="h-auto w-full max-w-[240px] rounded-2xl border border-zinc-200 shadow-md"
+              className="h-auto w-full max-w-2xl rounded-2xl border border-zinc-200 shadow-md"
             />
           ))}
         </div>
