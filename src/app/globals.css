@@ -3,8 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
-  --brand-red: #e11414;
-  --brand-red-dark: #b30f0f;
+  --brand-blue: #1477e1;
+  --brand-blue-dark: #0f5bb3;
   --brand-black: #0a0a0a;
   --brand-white: #ffffff;
 }
@@ -12,8 +12,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-brand-red: var(--brand-red);
-  --color-brand-red-dark: var(--brand-red-dark);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-blue-dark: var(--brand-blue-dark);
   --color-brand-black: var(--brand-black);
   --color-brand-white: var(--brand-white);
   --font-sans: var(--font-geist-sans);
