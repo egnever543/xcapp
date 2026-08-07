@@ -58,16 +58,17 @@ export async function sendLeadToChatbot(lead: {
   email: string;
   phone: string;
 }): Promise<ChatbotResult> {
-  const body = {
-    ...lead,
-    // A API espera o telefone também no campo senderPhone.
-    senderPhone: lead.phone,
-  };
+  // A API espera os parâmetros na query string, no padrão:
+  //   <webhook>?Content-Type=application/json&senderPhone=<telefone>
+  const url = new URL(CHATBOT_URL);
+  url.searchParams.set("Content-Type", "application/json");
+  url.searchParams.set("senderPhone", lead.phone.replace(/\D/g, ""));
 
-  const res = await fetch(CHATBOT_URL, {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "*/*" },
-    body: JSON.stringify(body),
+    // Envia também no corpo, por garantia.
+    body: JSON.stringify({ email: lead.email, phone: lead.phone }),
     // Não deixa o pagamento travar por cache.
     cache: "no-store",
   });

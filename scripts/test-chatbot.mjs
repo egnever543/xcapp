@@ -17,14 +17,20 @@ const url =
 const email = process.argv[2] || "teste@example.com";
 const phone = process.argv[3] || "11999999999";
 
-const payload = { email, phone, senderPhone: phone };
+// A API espera os parâmetros na query string:
+//   <webhook>?Content-Type=application/json&senderPhone=<telefone>
+const target = new URL(url);
+target.searchParams.set("Content-Type", "application/json");
+target.searchParams.set("senderPhone", phone.replace(/\D/g, ""));
 
-console.log("POST", url);
+const payload = { email, phone };
+
+console.log("POST", target.toString());
 console.log("Body:", JSON.stringify(payload));
 console.log("----------------------------------------");
 
 try {
-  const res = await fetch(url, {
+  const res = await fetch(target, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "*/*" },
     body: JSON.stringify(payload),
