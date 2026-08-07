@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "X IPTV — Licenças",
-  description: "Compre sua licença X IPTV de forma rápida e segura.",
+  title: "xciptv — Licenças",
+  description: "Compre sua licença xciptv de forma rápida e segura.",
 };
 
 export default function RootLayout({
