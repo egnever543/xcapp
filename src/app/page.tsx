@@ -6,7 +6,7 @@ export default function Home() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
         <div className="mb-8 flex justify-center">
           <span className="text-3xl font-extrabold tracking-tight text-brand-black">
-            X<span className="text-brand-red"> IPTV</span>
+            X<span className="text-brand-blue"> IPTV</span>
           </span>
         </div>
 

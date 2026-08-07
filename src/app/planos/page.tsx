@@ -31,12 +31,12 @@ export default async function PlanosPage() {
               key={plan.id}
               className={`flex flex-col rounded-2xl border p-8 ${
                 plan.highlighted
-                  ? "border-brand-red shadow-lg"
+                  ? "border-brand-blue shadow-lg"
                   : "border-zinc-200"
               }`}
             >
               {plan.highlighted && (
-                <span className="mb-4 w-fit rounded-full bg-brand-red px-3 py-1 text-xs font-medium text-white">
+                <span className="mb-4 w-fit rounded-full bg-brand-blue px-3 py-1 text-xs font-medium text-white">
                   Mais popular
                 </span>
               )}
@@ -49,7 +49,7 @@ export default async function PlanosPage() {
               <ul className="mt-6 flex-1 space-y-3 text-sm">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
-                    <span className="text-brand-red">✓</span>
+                    <span className="text-brand-blue">✓</span>
                     {feature}
                   </li>
                 ))}
@@ -57,7 +57,7 @@ export default async function PlanosPage() {
               <button
                 className={`mt-8 rounded-full px-5 py-3 font-medium transition-colors ${
                   plan.highlighted
-                    ? "bg-brand-red text-white hover:bg-brand-red-dark"
+                    ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
                     : "border border-zinc-300 hover:bg-zinc-100"
                 }`}
               >

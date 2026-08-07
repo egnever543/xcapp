@@ -21,7 +21,7 @@ export function LeadForm() {
           required
           autoComplete="email"
           placeholder="seu@email.com"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-brand-black outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/30"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-brand-black outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
         />
       </div>
 
@@ -36,18 +36,18 @@ export function LeadForm() {
           required
           autoComplete="tel"
           placeholder="(11) 99999-9999"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-brand-black outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/30"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-brand-black outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/30"
         />
       </div>
 
       {state.error && (
-        <p className="text-sm font-medium text-brand-red">{state.error}</p>
+        <p className="text-sm font-medium text-brand-blue">{state.error}</p>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 rounded-lg bg-brand-red px-5 py-3 font-semibold text-white transition-colors hover:bg-brand-red-dark disabled:opacity-60"
+        className="mt-2 rounded-lg bg-brand-blue px-5 py-3 font-semibold text-white transition-colors hover:bg-brand-blue-dark disabled:opacity-60"
       >
         {pending ? "Entrando..." : "Continuar"}
       </button>
