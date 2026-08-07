@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { setSessionLead } from "@/lib/session";
+import { sendLeadToChatbot } from "@/lib/chatbot";
 
 export type LeadFormState = {
   error?: string;
@@ -27,6 +28,16 @@ export async function submitLead(
     return { error: "Informe um telefone válido com DDD." };
   }
 
-  await setSessionLead({ email, phone });
+  // Envia o lead para o chatbot e tenta obter a Pay URL da resposta.
+  // Não bloqueia o fluxo caso a API falhe — o usuário segue para os planos.
+  let payUrl: string | undefined;
+  try {
+    const result = await sendLeadToChatbot({ email, phone });
+    payUrl = result.payUrl ?? undefined;
+  } catch (err) {
+    console.error("Falha ao enviar lead para o chatbot:", err);
+  }
+
+  await setSessionLead({ email, phone, payUrl });
   redirect("/planos");
 }

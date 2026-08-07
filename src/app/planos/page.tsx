@@ -94,15 +94,29 @@ export default async function PlanosPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                className={`mt-8 rounded-full px-5 py-3 font-medium transition-colors ${
-                  plan.highlighted
-                    ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
-                    : "border border-zinc-300 hover:bg-zinc-100"
-                }`}
-              >
-                Comprar {plan.name}
-              </button>
+              {lead.payUrl ? (
+                <a
+                  href={lead.payUrl}
+                  className={`mt-8 block rounded-full px-5 py-3 text-center font-medium transition-colors ${
+                    plan.highlighted
+                      ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
+                      : "border border-zinc-300 hover:bg-zinc-100"
+                  }`}
+                >
+                  Comprar {plan.name}
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className={`mt-8 rounded-full px-5 py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    plan.highlighted
+                      ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
+                      : "border border-zinc-300 hover:bg-zinc-100"
+                  }`}
+                >
+                  Comprar {plan.name}
+                </button>
+              )}
             </div>
           ))}
         </div>
