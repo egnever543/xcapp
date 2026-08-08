@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { plans } from "@/lib/plans";
-import { getSessionLead } from "@/lib/session";
+import { getLead, type StoredLead } from "@/lib/lead-storage";
 
 // Screenshots do app exibidos na página de compra.
 // Para adicionar mais imagens, coloque os arquivos em /public/app e
@@ -25,13 +28,24 @@ const whatsappHref = whatsappNumber
     )}`
   : null;
 
-export default async function PlanosPage() {
-  const lead = await getSessionLead();
+export default function PlanosPage() {
+  const router = useRouter();
+  const [lead, setLead] = useState<StoredLead | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sem dados na sessão, volta para a tela inicial.
-  if (!lead) {
-    redirect("/");
-  }
+  // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
+  // a tela inicial para preencher o formulário.
+  useEffect(() => {
+    const stored = getLead();
+    if (!stored) {
+      router.replace("/");
+      return;
+    }
+    setLead(stored);
+    setLoading(false);
+  }, [router]);
+
+  if (loading || !lead) return null;
 
   return (
     <div className="flex flex-1 flex-col bg-white text-brand-black">
