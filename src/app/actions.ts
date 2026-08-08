@@ -1,14 +1,17 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { setSessionLead } from "@/lib/session";
 import { sendLeadToChatbot } from "@/lib/chatbot";
 
 export type LeadFormState = {
   error?: string;
+  success?: boolean;
+  email?: string;
+  phone?: string;
+  payUrl?: string;
 };
 
-// Valida e-mail e telefone, salva na sessão e segue para os planos.
+// Valida e-mail e telefone, envia o lead ao chatbot e devolve a Pay URL.
+// A persistência (localStorage) e a navegação são feitas no cliente.
 export async function submitLead(
   _prevState: LeadFormState,
   formData: FormData,
@@ -38,6 +41,5 @@ export async function submitLead(
     console.error("Falha ao enviar lead para o chatbot:", err);
   }
 
-  await setSessionLead({ email, phone, payUrl });
-  redirect("/planos");
+  return { success: true, email, phone, payUrl };
 }

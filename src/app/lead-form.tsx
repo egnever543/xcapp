@@ -1,12 +1,28 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { submitLead, type LeadFormState } from "./actions";
+import { saveLead } from "@/lib/lead-storage";
 
 const initialState: LeadFormState = {};
 
 export function LeadForm() {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(submitLead, initialState);
+
+  // Ao concluir com sucesso, salva no localStorage (validade de 7 dias) e
+  // segue para os planos.
+  useEffect(() => {
+    if (state.success && state.email && state.phone) {
+      saveLead({
+        email: state.email,
+        phone: state.phone,
+        payUrl: state.payUrl,
+      });
+      router.push("/planos");
+    }
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-4">

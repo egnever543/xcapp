@@ -1,6 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LeadForm } from "./lead-form";
+import { getLead } from "@/lib/lead-storage";
 
 export default function Home() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  // Se já existir lead válido salvo (até 7 dias), pula o formulário.
+  useEffect(() => {
+    if (getLead()) {
+      router.replace("/planos");
+    } else {
+      setChecking(false);
+    }
+  }, [router]);
+
+  if (checking) return null;
+
   return (
     <div className="flex flex-1 items-center justify-center bg-brand-black px-6 py-12">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
