@@ -9,6 +9,8 @@ export type StoredLead = {
   isTrial?: boolean;
   username?: string;
   password?: string;
+  // true quando o e-mail com os dados de acesso já foi enviado (evita reenvio).
+  notified?: boolean;
 };
 
 type StoredLeadWithExpiry = StoredLead & { expiresAt: number };
@@ -56,6 +58,7 @@ export function getLead(): StoredLead | null {
       isTrial: data.isTrial,
       username: data.username,
       password: data.password,
+      notified: data.notified,
     };
   } catch {
     return null;
