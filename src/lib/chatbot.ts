@@ -47,8 +47,44 @@ function findUrl(value: unknown): string | null {
   return null;
 }
 
+// Normaliza valores comuns de is_trial ("0"/"1", boolean, número) para boolean.
+function normalizeBool(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    if (["1", "true", "yes", "sim"].includes(s)) return true;
+    if (["0", "false", "no", "nao", "não", ""].includes(s)) return false;
+  }
+  return null;
+}
+
+// Procura recursivamente pela chave "is_trial" na resposta.
+function findIsTrial(value: unknown): boolean | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findIsTrial(item);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if ("is_trial" in record) {
+      const b = normalizeBool(record["is_trial"]);
+      if (b !== null) return b;
+    }
+    for (const item of Object.values(record)) {
+      const found = findIsTrial(item);
+      if (found !== null) return found;
+    }
+  }
+  return null;
+}
+
 export type ChatbotResult = {
   payUrl: string | null;
+  isTrial: boolean | null;
   raw: string;
   status: number;
 };
@@ -74,12 +110,15 @@ export async function sendLeadToChatbot(lead: {
   const raw = await res.text();
 
   let payUrl: string | null = null;
+  let isTrial: boolean | null = null;
   try {
-    payUrl = findUrl(JSON.parse(raw));
+    const json = JSON.parse(raw);
+    payUrl = findUrl(json);
+    isTrial = findIsTrial(json);
   } catch {
     // Resposta não é JSON: trata como texto puro.
     payUrl = findUrl(raw);
   }
 
-  return { payUrl, raw, status: res.status };
+  return { payUrl, isTrial, raw, status: res.status };
 }

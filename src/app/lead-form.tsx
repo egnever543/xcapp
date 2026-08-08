@@ -19,6 +19,7 @@ export function LeadForm() {
         email: state.email,
         phone: state.phone,
         payUrl: state.payUrl,
+        isTrial: state.isTrial,
       });
       router.push("/planos");
     }
