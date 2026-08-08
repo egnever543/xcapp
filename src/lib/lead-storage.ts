@@ -7,6 +7,8 @@ export type StoredLead = {
   phone: string;
   payUrl?: string;
   isTrial?: boolean;
+  username?: string;
+  password?: string;
 };
 
 type StoredLeadWithExpiry = StoredLead & { expiresAt: number };
@@ -52,6 +54,8 @@ export function getLead(): StoredLead | null {
       phone: data.phone,
       payUrl: data.payUrl,
       isTrial: data.isTrial,
+      username: data.username,
+      password: data.password,
     };
   } catch {
     return null;

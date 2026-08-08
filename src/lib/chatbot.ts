@@ -82,9 +82,36 @@ function findIsTrial(value: unknown): boolean | null {
   return null;
 }
 
+// Procura recursivamente a primeira string (ou número) associada a uma das
+// chaves informadas — usado para achar username/password na resposta.
+function findValueByKeys(value: unknown, keys: string[]): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findValueByKeys(item, keys);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of keys) {
+      const v = record[key];
+      if (typeof v === "string" && v) return v;
+      if (typeof v === "number") return String(v);
+    }
+    for (const item of Object.values(record)) {
+      const found = findValueByKeys(item, keys);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 export type ChatbotResult = {
   payUrl: string | null;
   isTrial: boolean | null;
+  username: string | null;
+  password: string | null;
   raw: string;
   status: number;
 };
@@ -111,14 +138,18 @@ export async function sendLeadToChatbot(lead: {
 
   let payUrl: string | null = null;
   let isTrial: boolean | null = null;
+  let username: string | null = null;
+  let password: string | null = null;
   try {
     const json = JSON.parse(raw);
     payUrl = findUrl(json);
     isTrial = findIsTrial(json);
+    username = findValueByKeys(json, ["username", "user", "login", "usuario"]);
+    password = findValueByKeys(json, ["password", "pass", "senha"]);
   } catch {
     // Resposta não é JSON: trata como texto puro.
     payUrl = findUrl(raw);
   }
 
-  return { payUrl, isTrial, raw, status: res.status };
+  return { payUrl, isTrial, username, password, raw, status: res.status };
 }
