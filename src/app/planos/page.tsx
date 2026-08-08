@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { plans } from "@/lib/plans";
-import { getLead, type StoredLead } from "@/lib/lead-storage";
+import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
 import { WhatsAppButton } from "../whatsapp-button";
 
 // Screenshots do app exibidos na página de compra.
@@ -54,6 +54,8 @@ export default function PlanosPage() {
   const [lead, setLead] = useState<StoredLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [venc, setVenc] = useState<Vencimento | null>(null);
+  // Status "ao vivo" consultado no Xtream (null = ainda não consultado).
+  const [liveIsTrial, setLiveIsTrial] = useState<boolean | null>(null);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -67,39 +69,66 @@ export default function PlanosPage() {
     setLoading(false);
   }, [router]);
 
-  // Consulta o vencimento no Xtream (via rota do servidor) usando as
-  // credenciais salvas no localStorage.
+  // Consulta o status/vencimento no Xtream (via rota do servidor) usando as
+  // credenciais salvas. Faz polling a cada 15s enquanto ainda for trial, para
+  // trocar a tela automaticamente quando o pagamento for confirmado.
   useEffect(() => {
     if (!lead?.username || !lead?.password) return;
     let ativo = true;
-    fetch("/api/xtream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: lead.username,
-        password: lead.password,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!ativo || d?.error) return;
+
+    const check = async (): Promise<boolean | null> => {
+      try {
+        const r = await fetch("/api/xtream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: lead.username,
+            password: lead.password,
+          }),
+        });
+        const d = await r.json();
+        if (!ativo || d?.error) return null;
+
         setVenc({
           expDate: d.expDate != null ? Number(d.expDate) : null,
           status: d.status ?? null,
         });
-      })
-      .catch(() => {
-        // Silencioso: se falhar, apenas não mostra o vencimento.
-      });
+
+        if (typeof d.isTrial === "boolean") {
+          setLiveIsTrial(d.isTrial);
+          // Persiste a mudança de status no localStorage.
+          if (d.isTrial !== lead.isTrial) {
+            saveLead({ ...lead, isTrial: d.isTrial });
+          }
+          return d.isTrial;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    check();
+    const id = setInterval(async () => {
+      const t = await check();
+      // Já virou pago (não-trial): pode parar de consultar.
+      if (t === false) clearInterval(id);
+    }, 15000);
+
     return () => {
       ativo = false;
+      clearInterval(id);
     };
   }, [lead]);
 
   if (loading || !lead) return null;
 
+  // Status efetivo: prioriza o consultado ao vivo no Xtream; se ainda não
+  // consultou, usa o que veio do chatbot/localStorage.
+  const isTrialEffective = liveIsTrial ?? lead.isTrial;
+
   // Conta paga (não é trial): mostra tela de compra confirmada, sem os planos.
-  if (lead.isTrial === false) {
+  if (isTrialEffective === false) {
     return (
       <div className="flex flex-1 flex-col bg-white text-brand-black">
         {/* Cabeçalho */}

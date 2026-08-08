@@ -4,6 +4,18 @@ import { NextResponse } from "next/server";
 // Ex.: XTREAM_HOST=http://SEU_HOST:80
 const XTREAM_HOST = process.env.XTREAM_HOST;
 
+// Normaliza is_trial ("0"/"1", boolean, número) para boolean.
+function normalizeBool(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    if (["1", "true", "yes", "sim"].includes(s)) return true;
+    if (["0", "false", "no", "nao", "não", ""].includes(s)) return false;
+  }
+  return null;
+}
+
 // Consulta o player_api.php do Xtream (no servidor, evitando CORS/mixed-content)
 // e devolve os dados de conta — incluindo o vencimento (exp_date).
 export async function POST(request: Request) {
@@ -45,7 +57,7 @@ export async function POST(request: Request) {
       status: info.status ?? null,
       // exp_date: timestamp Unix em segundos (ou null = sem expiração).
       expDate: info.exp_date ?? null,
-      isTrial: info.is_trial ?? null,
+      isTrial: normalizeBool(info.is_trial),
       maxConnections: info.max_connections ?? null,
       activeCons: info.active_cons ?? null,
     });
