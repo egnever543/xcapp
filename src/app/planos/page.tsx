@@ -76,6 +76,26 @@ export default function PlanosPage() {
     if (!lead?.username || !lead?.password) return;
     let ativo = true;
 
+    // Estado anterior de trial e se o e-mail de acesso já foi enviado —
+    // usados para disparar o e-mail só na transição trial -> pago, uma vez.
+    let prevTrial: boolean | null = lead.isTrial ?? null;
+    let notified = lead.notified ?? false;
+
+    // Envia o e-mail com os dados de acesso (uma única vez).
+    const enviarEmailAcesso = () => {
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: lead.email,
+          username: lead.username,
+          password: lead.password,
+        }),
+      }).catch(() => {
+        // Silencioso: se falhar, não trava a tela.
+      });
+    };
+
     const check = async (): Promise<boolean | null> => {
       try {
         const r = await fetch("/api/xtream", {
@@ -97,9 +117,18 @@ export default function PlanosPage() {
 
         if (typeof d.isTrial === "boolean") {
           setLiveIsTrial(d.isTrial);
-          // Persiste a mudança de status no localStorage.
-          if (d.isTrial !== lead.isTrial) {
-            saveLead({ ...lead, isTrial: d.isTrial });
+
+          // Transição trial -> pago: dispara o e-mail com os dados de acesso.
+          const virouPago = prevTrial === true && d.isTrial === false;
+          if (virouPago && !notified) {
+            notified = true;
+            enviarEmailAcesso();
+          }
+          prevTrial = d.isTrial;
+
+          // Persiste status/flag de e-mail no localStorage.
+          if (d.isTrial !== lead.isTrial || notified !== lead.notified) {
+            saveLead({ ...lead, isTrial: d.isTrial, notified });
           }
           return d.isTrial;
         }
