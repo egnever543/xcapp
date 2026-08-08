@@ -58,10 +58,15 @@ export async function sendLeadToChatbot(lead: {
   email: string;
   phone: string;
 }): Promise<ChatbotResult> {
-  const res = await fetch(CHATBOT_URL, {
+  // A API espera os parâmetros na query string, no padrão:
+  //   <webhook>?Content-Type=application/json&senderPhone=<telefone>
+  const url = new URL(CHATBOT_URL);
+  url.searchParams.set("Content-Type", "application/json");
+  url.searchParams.set("senderPhone", lead.phone.replace(/\D/g, ""));
+
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-    body: JSON.stringify(lead),
+    headers: { Accept: "*/*" },
     // Não deixa o pagamento travar por cache.
     cache: "no-store",
   });
