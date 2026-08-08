@@ -20,6 +20,8 @@ export function LeadForm() {
         phone: state.phone,
         payUrl: state.payUrl,
         isTrial: state.isTrial,
+        username: state.username,
+        password: state.password,
       });
       router.push("/planos");
     }

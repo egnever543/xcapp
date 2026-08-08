@@ -9,6 +9,8 @@ export type LeadFormState = {
   phone?: string;
   payUrl?: string;
   isTrial?: boolean;
+  username?: string;
+  password?: string;
 };
 
 // Valida e-mail e telefone, envia o lead ao chatbot e devolve a Pay URL.
@@ -36,13 +38,17 @@ export async function submitLead(
   // Não bloqueia o fluxo caso a API falhe — o usuário segue para os planos.
   let payUrl: string | undefined;
   let isTrial: boolean | undefined;
+  let username: string | undefined;
+  let password: string | undefined;
   try {
     const result = await sendLeadToChatbot({ email, phone });
     payUrl = result.payUrl ?? undefined;
     isTrial = result.isTrial ?? undefined;
+    username = result.username ?? undefined;
+    password = result.password ?? undefined;
   } catch (err) {
     console.error("Falha ao enviar lead para o chatbot:", err);
   }
 
-  return { success: true, email, phone, payUrl, isTrial };
+  return { success: true, email, phone, payUrl, isTrial, username, password };
 }

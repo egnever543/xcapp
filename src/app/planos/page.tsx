@@ -35,10 +35,25 @@ const whatsappSupportHref = whatsappNumber
     )}`
   : null;
 
+type Vencimento = {
+  expDate: number | null; // timestamp Unix em segundos
+  status: string | null;
+};
+
+// Texto de dias restantes a partir do timestamp de expiração (segundos).
+function diasRestantes(expDate: number): string {
+  const dias = Math.ceil((expDate * 1000 - Date.now()) / 86400000);
+  if (dias < 0) return "expirada";
+  if (dias === 0) return "vence hoje";
+  if (dias === 1) return "1 dia restante";
+  return `${dias} dias restantes`;
+}
+
 export default function PlanosPage() {
   const router = useRouter();
   const [lead, setLead] = useState<StoredLead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [venc, setVenc] = useState<Vencimento | null>(null);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -51,6 +66,35 @@ export default function PlanosPage() {
     setLead(stored);
     setLoading(false);
   }, [router]);
+
+  // Consulta o vencimento no Xtream (via rota do servidor) usando as
+  // credenciais salvas no localStorage.
+  useEffect(() => {
+    if (!lead?.username || !lead?.password) return;
+    let ativo = true;
+    fetch("/api/xtream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: lead.username,
+        password: lead.password,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!ativo || d?.error) return;
+        setVenc({
+          expDate: d.expDate != null ? Number(d.expDate) : null,
+          status: d.status ?? null,
+        });
+      })
+      .catch(() => {
+        // Silencioso: se falhar, apenas não mostra o vencimento.
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [lead]);
 
   if (loading || !lead) return null;
 
@@ -99,6 +143,32 @@ export default function PlanosPage() {
           <p className="mt-2 text-zinc-600">
             Não recebeu? Entre em contato pelo WhatsApp abaixo.
           </p>
+
+          {venc && (venc.expDate || venc.status) && (
+            <div className="mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
+              {venc.status && (
+                <p className="text-zinc-600">
+                  Status:{" "}
+                  <span className="font-medium text-brand-black">
+                    {venc.status}
+                  </span>
+                </p>
+              )}
+              <p className="text-zinc-600">
+                {venc.expDate ? (
+                  <>
+                    Sua licença vence em{" "}
+                    <span className="font-medium text-brand-black">
+                      {new Date(venc.expDate * 1000).toLocaleDateString("pt-BR")}
+                    </span>{" "}
+                    ({diasRestantes(venc.expDate)}).
+                  </>
+                ) : (
+                  "Sua licença não tem data de expiração."
+                )}
+              </p>
+            </div>
+          )}
 
           {whatsappSupportHref && (
             <div className="mt-8">
