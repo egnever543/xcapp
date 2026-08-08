@@ -81,6 +81,7 @@ export default function PlanosPage() {
         const r = await fetch("/api/xtream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({
             username: lead.username,
             password: lead.password,
@@ -108,16 +109,32 @@ export default function PlanosPage() {
       }
     };
 
+    // Consulta imediata ao carregar / dar F5 na página.
     check();
+
+    // Polling a cada 15s enquanto ainda for trial.
     const id = setInterval(async () => {
       const t = await check();
       // Já virou pago (não-trial): pode parar de consultar.
       if (t === false) clearInterval(id);
     }, 15000);
 
+    // Força uma atualização sempre que a aba volta ao foco / fica visível
+    // (ex.: cliente sai para pagar e retorna à página).
+    const onFocus = () => {
+      check();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       ativo = false;
       clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [lead]);
 
