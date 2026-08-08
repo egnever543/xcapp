@@ -56,6 +56,8 @@ export default function PlanosPage() {
   const [venc, setVenc] = useState<Vencimento | null>(null);
   // Status "ao vivo" consultado no Xtream (null = ainda não consultado).
   const [liveIsTrial, setLiveIsTrial] = useState<boolean | null>(null);
+  // Modal de pagamento embutido (iframe) aberto?
+  const [payOpen, setPayOpen] = useState(false);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -340,16 +342,17 @@ export default function PlanosPage() {
                 ))}
               </ul>
               {lead.payUrl ? (
-                <a
-                  href={lead.payUrl}
-                  className={`mt-8 block rounded-full px-5 py-3 text-center font-medium transition-colors ${
+                <button
+                  type="button"
+                  onClick={() => setPayOpen(true)}
+                  className={`mt-8 block w-full rounded-full px-5 py-3 text-center font-medium transition-colors ${
                     plan.highlighted
                       ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
                       : "border border-zinc-300 hover:bg-zinc-100"
                   }`}
                 >
                   Comprar {plan.name}
-                </a>
+                </button>
               ) : (
                 <button
                   disabled
@@ -375,6 +378,57 @@ export default function PlanosPage() {
           </div>
         )}
       </section>
+
+      {/* Modal de pagamento embutido (iframe) */}
+      {payOpen && lead.payUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/70">
+          <div className="mx-auto flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl sm:my-6 sm:h-[calc(100%-3rem)] sm:rounded-2xl sm:overflow-hidden">
+            {/* Barra do modal */}
+            <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-zinc-600">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-brand-blue" />
+                Aguardando confirmação do pagamento… esta janela fecha sozinha.
+              </div>
+              <button
+                type="button"
+                onClick={() => setPayOpen(false)}
+                aria-label="Fechar"
+                className="rounded-full p-1 text-zinc-500 hover:bg-zinc-100 hover:text-brand-black"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 fill-none stroke-current"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Pagamento */}
+            <iframe
+              src={lead.payUrl}
+              title="Pagamento"
+              className="w-full flex-1 border-0"
+              allow="payment *"
+            />
+
+            {/* Fallback: caso o provedor bloqueie iframe */}
+            <div className="border-t border-zinc-200 px-4 py-3 text-center text-xs text-zinc-500">
+              Não carregou o pagamento?{" "}
+              <a
+                href={lead.payUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-brand-blue hover:underline"
+              >
+                Abrir em nova aba
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rodapé */}
       <footer className="mt-auto border-t border-zinc-200 py-8">
