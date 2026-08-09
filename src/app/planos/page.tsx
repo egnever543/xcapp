@@ -40,6 +40,13 @@ type Vencimento = {
   status: string | null;
 };
 
+type PixData = {
+  id: number;
+  amount: number;
+  qrCode: string | null; // URL da imagem do QR
+  qrCodeText: string | null; // copia-e-cola
+};
+
 // Texto de dias restantes a partir do timestamp de expiração (segundos).
 function diasRestantes(expDate: number): string {
   const dias = Math.ceil((expDate * 1000 - Date.now()) / 86400000);
@@ -56,8 +63,13 @@ export default function PlanosPage() {
   const [venc, setVenc] = useState<Vencimento | null>(null);
   // Status "ao vivo" consultado no Xtream (null = ainda não consultado).
   const [liveIsTrial, setLiveIsTrial] = useState<boolean | null>(null);
-  // Modal de pagamento embutido (iframe) aberto?
+  // Modal de pagamento PIX (FastDePix).
   const [payOpen, setPayOpen] = useState(false);
+  const [pix, setPix] = useState<PixData | null>(null);
+  const [pixLoading, setPixLoading] = useState(false);
+  const [pixError, setPixError] = useState<string | null>(null);
+  const [pixPaid, setPixPaid] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -169,14 +181,70 @@ export default function PlanosPage() {
     };
   }, [lead]);
 
+  // Polling do status da cobrança PIX até confirmar o pagamento.
+  useEffect(() => {
+    if (!pix?.id || pixPaid) return;
+    let ativo = true;
+    const id = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/pix?id=${pix.id}`, { cache: "no-store" });
+        const d = await r.json();
+        if (!ativo) return;
+        if (d?.status === "paid" || d?.status === "approved") {
+          setPixPaid(true);
+          clearInterval(id);
+        }
+      } catch {
+        // silencioso
+      }
+    }, 4000);
+    return () => {
+      ativo = false;
+      clearInterval(id);
+    };
+  }, [pix, pixPaid]);
+
+  // Gera a cobrança PIX (FastDePix) para o plano escolhido e abre o modal.
+  const iniciarPagamento = async (planId: string) => {
+    setPayOpen(true);
+    setPix(null);
+    setPixError(null);
+    setPixPaid(false);
+    setCopied(false);
+    setPixLoading(true);
+    try {
+      const r = await fetch("/api/pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, phone: lead?.phone }),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error) {
+        setPixError(d?.error ?? "Falha ao gerar o PIX. Tente novamente.");
+      } else {
+        setPix({
+          id: d.id,
+          amount: d.amount,
+          qrCode: d.qrCode ?? null,
+          qrCodeText: d.qrCodeText ?? null,
+        });
+      }
+    } catch {
+      setPixError("Falha ao gerar o PIX. Tente novamente.");
+    } finally {
+      setPixLoading(false);
+    }
+  };
+
   if (loading || !lead) return null;
 
   // Status efetivo: prioriza o consultado ao vivo no Xtream; se ainda não
   // consultou, usa o que veio do chatbot/localStorage.
   const isTrialEffective = liveIsTrial ?? lead.isTrial;
 
-  // Conta paga (não é trial): mostra tela de compra confirmada, sem os planos.
-  if (isTrialEffective === false) {
+  // Conta paga (não-trial) OU pagamento PIX confirmado: tela de compra
+  // confirmada, sem os planos.
+  if (isTrialEffective === false || pixPaid) {
     return (
       <div className="flex flex-1 flex-col bg-white text-brand-black">
         {/* Cabeçalho */}
@@ -341,30 +409,17 @@ export default function PlanosPage() {
                   </li>
                 ))}
               </ul>
-              {lead.payUrl ? (
-                <button
-                  type="button"
-                  onClick={() => setPayOpen(true)}
-                  className={`mt-8 block w-full rounded-full px-5 py-3 text-center font-medium transition-colors ${
-                    plan.highlighted
-                      ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
-                      : "border border-zinc-300 hover:bg-zinc-100"
-                  }`}
-                >
-                  Comprar {plan.name}
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className={`mt-8 rounded-full px-5 py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    plan.highlighted
-                      ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
-                      : "border border-zinc-300 hover:bg-zinc-100"
-                  }`}
-                >
-                  Comprar {plan.name}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => iniciarPagamento(plan.id)}
+                className={`mt-8 block w-full rounded-full px-5 py-3 text-center font-medium transition-colors ${
+                  plan.highlighted
+                    ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
+                    : "border border-zinc-300 hover:bg-zinc-100"
+                }`}
+              >
+                Comprar {plan.name}
+              </button>
             </div>
           ))}
         </div>
@@ -380,15 +435,14 @@ export default function PlanosPage() {
       </section>
 
       {/* Modal de pagamento embutido (iframe) */}
-      {payOpen && lead.payUrl && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/70">
-          <div className="mx-auto flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl sm:my-6 sm:h-[calc(100%-3rem)] sm:rounded-2xl sm:overflow-hidden">
+      {payOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="flex w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl">
             {/* Barra do modal */}
             <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-zinc-600">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-brand-blue" />
-                Aguardando confirmação do pagamento… esta janela fecha sozinha.
-              </div>
+              <span className="font-semibold text-brand-black">
+                Pagamento via PIX
+              </span>
               <button
                 type="button"
                 onClick={() => setPayOpen(false)}
@@ -406,25 +460,70 @@ export default function PlanosPage() {
               </button>
             </div>
 
-            {/* Pagamento */}
-            <iframe
-              src={lead.payUrl}
-              title="Pagamento"
-              className="w-full flex-1 border-0"
-              allow="payment *"
-            />
+            <div className="flex flex-col items-center gap-4 px-6 py-6 text-center">
+              {pixLoading && (
+                <p className="py-8 text-sm text-zinc-600">Gerando cobrança…</p>
+              )}
 
-            {/* Fallback: caso o provedor bloqueie iframe */}
-            <div className="border-t border-zinc-200 px-4 py-3 text-center text-xs text-zinc-500">
-              Não carregou o pagamento?{" "}
-              <a
-                href={lead.payUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-brand-blue hover:underline"
-              >
-                Abrir em nova aba
-              </a>
+              {pixError && (
+                <div className="py-4">
+                  <p className="text-sm font-medium text-red-600">{pixError}</p>
+                </div>
+              )}
+
+              {pix && !pixError && (
+                <>
+                  <p className="text-sm text-zinc-600">
+                    Escaneie o QR Code ou copie o código para pagar
+                    {typeof pix.amount === "number" && (
+                      <>
+                        {" "}
+                        <span className="font-semibold text-brand-black">
+                          R$ {pix.amount.toFixed(2).replace(".", ",")}
+                        </span>
+                      </>
+                    )}
+                    .
+                  </p>
+
+                  {pix.qrCode && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pix.qrCode}
+                      alt="QR Code PIX"
+                      className="h-56 w-56 rounded-lg border border-zinc-200"
+                    />
+                  )}
+
+                  {pix.qrCodeText && (
+                    <div className="w-full">
+                      <div className="max-h-24 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-left text-xs break-all text-zinc-700">
+                        {pix.qrCodeText}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (pix.qrCodeText) {
+                            navigator.clipboard
+                              ?.writeText(pix.qrCodeText)
+                              .then(() => setCopied(true))
+                              .catch(() => {});
+                          }
+                        }}
+                        className="mt-3 w-full rounded-full bg-brand-blue px-5 py-3 font-medium text-white transition-colors hover:bg-brand-blue-dark"
+                      >
+                        {copied ? "Código copiado!" : "Copiar código PIX"}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex items-center gap-2 text-sm text-zinc-500">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-brand-blue" />
+                    Aguardando confirmação do pagamento… esta janela fecha
+                    sozinha.
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
