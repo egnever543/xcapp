@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { plans } from "@/lib/plans";
+import {
+  listPackages,
+  formatPrice,
+  type Package,
+} from "@/lib/packages";
 import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
 import { WhatsAppButton } from "../whatsapp-button";
 
@@ -45,6 +49,7 @@ type PixData = {
   amount: number;
   qrCode: string | null; // URL da imagem do QR
   qrCodeText: string | null; // copia-e-cola
+  packageId: string; // pacote escolhido (para o provisionamento)
 };
 
 // Texto de dias restantes a partir do timestamp de expiração (segundos).
@@ -70,6 +75,9 @@ export default function PlanosPage() {
   const [pixError, setPixError] = useState<string | null>(null);
   const [pixPaid, setPixPaid] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Seleção: nº de telas e conteúdo adulto (define quais pacotes exibir).
+  const [telas, setTelas] = useState<1 | 2>(1);
+  const [adult, setAdult] = useState(false);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -203,6 +211,7 @@ export default function PlanosPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 transactionId: pix.id,
+                packageId: pix.packageId,
                 email: lead?.email,
                 phone: lead?.phone,
               }),
@@ -236,8 +245,8 @@ export default function PlanosPage() {
     };
   }, [pix, pixPaid, lead]);
 
-  // Gera a cobrança PIX (FastDePix) para o plano escolhido e abre o modal.
-  const iniciarPagamento = async (planId: string) => {
+  // Gera a cobrança PIX (FastDePix) para o pacote escolhido e abre o modal.
+  const iniciarPagamento = async (pkg: Package) => {
     setPayOpen(true);
     setPix(null);
     setPixError(null);
@@ -248,7 +257,7 @@ export default function PlanosPage() {
       const r = await fetch("/api/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, phone: lead?.phone }),
+        body: JSON.stringify({ packageId: pkg.id, phone: lead?.phone }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) {
@@ -259,6 +268,7 @@ export default function PlanosPage() {
           amount: d.amount,
           qrCode: d.qrCode ?? null,
           qrCodeText: d.qrCodeText ?? null,
+          packageId: pkg.id,
         });
       }
     } catch {
@@ -430,51 +440,148 @@ export default function PlanosPage() {
           Escolha sua licença
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-zinc-600">
-          Após a compra, enviaremos os dados de acesso por e-mail.
+          Ativação na hora. Após a compra, enviaremos os dados de acesso por
+          e-mail.
         </p>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`flex flex-col rounded-2xl border p-8 ${
-                plan.highlighted
-                  ? "border-brand-blue shadow-lg"
-                  : "border-zinc-200"
-              }`}
-            >
-              {plan.highlighted && (
-                <span className="mb-4 w-fit rounded-full bg-brand-blue px-3 py-1 text-xs font-medium text-white">
-                  Mais popular
-                </span>
-              )}
-              <h3 className="text-xl font-semibold">{plan.name}</h3>
-              <p className="mt-2 text-sm text-zinc-600">{plan.description}</p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">R$ {plan.price}</span>
-                <span className="text-zinc-500">{plan.period}</span>
-              </div>
-              <ul className="mt-6 flex-1 space-y-3 text-sm">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2">
-                    <span className="text-brand-blue">✓</span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+
+        {/* Seletores: telas e conteúdo adulto */}
+        <div className="mt-8 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-10">
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Quantas telas?
+            </span>
+            <div className="inline-flex rounded-full border border-zinc-300 p-1">
+              {([1, 2] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setTelas(n)}
+                  className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+                    telas === n
+                      ? "bg-brand-blue text-white"
+                      : "text-zinc-600 hover:bg-zinc-100"
+                  }`}
+                >
+                  {n} {n === 1 ? "tela" : "telas"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Conteúdo adulto?
+            </span>
+            <div className="inline-flex rounded-full border border-zinc-300 p-1">
               <button
                 type="button"
-                onClick={() => iniciarPagamento(plan.id)}
-                className={`mt-8 block w-full rounded-full px-5 py-3 text-center font-medium transition-colors ${
-                  plan.highlighted
-                    ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
-                    : "border border-zinc-300 hover:bg-zinc-100"
+                onClick={() => setAdult(false)}
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+                  !adult
+                    ? "bg-brand-blue text-white"
+                    : "text-zinc-600 hover:bg-zinc-100"
                 }`}
               >
-                Comprar {plan.name}
+                Sem adulto
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdult(true)}
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+                  adult
+                    ? "bg-brand-blue text-white"
+                    : "text-zinc-600 hover:bg-zinc-100"
+                }`}
+              >
+                Com adulto
               </button>
             </div>
-          ))}
+          </div>
         </div>
+
+        {/* Cards filtrados pela seleção */}
+        {(() => {
+          const lista = listPackages(telas, adult);
+          const mensal = lista.find((p) => p.duration === "mensal");
+          const mensalMonthly = mensal
+            ? mensal.priceCents / mensal.months
+            : null;
+          const destacadoId = lista.length
+            ? lista[lista.length - 1].id
+            : null;
+
+          return (
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {lista.map((pkg) => {
+                const monthly = pkg.priceCents / pkg.months;
+                const economia = mensalMonthly
+                  ? Math.round((1 - monthly / mensalMonthly) * 100)
+                  : 0;
+                const highlighted = pkg.id === destacadoId;
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`flex flex-col rounded-2xl border p-6 ${
+                      highlighted
+                        ? "border-brand-blue shadow-lg"
+                        : "border-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">
+                        {pkg.durationLabel}
+                      </h3>
+                      {economia > 0 && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          Economize {economia}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="text-sm text-zinc-500">R$</span>
+                      <span className="text-4xl font-bold">
+                        {formatPrice(pkg.priceCents)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      equivale a R$ {formatPrice(Math.round(monthly))}/mês
+                    </p>
+                    <ul className="mt-5 flex-1 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <span className="text-brand-blue">✓</span>
+                        {pkg.telas} {pkg.telas === 1 ? "tela" : "telas"}{" "}
+                        simultâneas
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-brand-blue">✓</span>
+                        {pkg.adult ? "Com" : "Sem"} conteúdo adulto
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-brand-blue">✓</span>
+                        Ativação imediata
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-brand-blue">✓</span>
+                        Suporte no WhatsApp
+                      </li>
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => iniciarPagamento(pkg)}
+                      className={`mt-6 block w-full rounded-full px-5 py-3 text-center font-medium transition-colors ${
+                        highlighted
+                          ? "bg-brand-blue text-white hover:bg-brand-blue-dark"
+                          : "border border-zinc-300 hover:bg-zinc-100"
+                      }`}
+                    >
+                      Assinar {pkg.durationLabel}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Compra pelo WhatsApp */}
         {whatsappHref && (
