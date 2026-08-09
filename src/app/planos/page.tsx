@@ -185,14 +185,46 @@ export default function PlanosPage() {
   useEffect(() => {
     if (!pix?.id || pixPaid) return;
     let ativo = true;
+    let provisionando = false;
     const id = setInterval(async () => {
       try {
         const r = await fetch(`/api/pix?id=${pix.id}`, { cache: "no-store" });
         const d = await r.json();
-        if (!ativo) return;
+        if (!ativo || provisionando) return;
+
         if (d?.status === "paid" || d?.status === "approved") {
-          setPixPaid(true);
+          provisionando = true;
           clearInterval(id);
+
+          // Provisiona o acesso (cria a conta no painel + envia e-mail).
+          try {
+            const pr = await fetch("/api/provision", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                transactionId: pix.id,
+                email: lead?.email,
+                phone: lead?.phone,
+              }),
+            });
+            const pd = await pr.json();
+            if (pr.ok && pd?.username && lead) {
+              const atualizado = {
+                ...lead,
+                isTrial: false,
+                notified: true,
+                username: pd.username,
+                password: pd.password,
+              };
+              saveLead(atualizado);
+              if (ativo) setLead(atualizado);
+            }
+          } catch {
+            // Se o provisionamento falhar, ainda mostramos a tela de sucesso;
+            // o e-mail/painel podem ser reprocessados pelo webhook depois.
+          }
+
+          if (ativo) setPixPaid(true);
         }
       } catch {
         // silencioso
@@ -202,7 +234,7 @@ export default function PlanosPage() {
       ativo = false;
       clearInterval(id);
     };
-  }, [pix, pixPaid]);
+  }, [pix, pixPaid, lead]);
 
   // Gera a cobrança PIX (FastDePix) para o plano escolhido e abre o modal.
   const iniciarPagamento = async (planId: string) => {
@@ -288,6 +320,26 @@ export default function PlanosPage() {
           <p className="mt-2 text-zinc-600">
             Não recebeu? Entre em contato pelo WhatsApp abaixo.
           </p>
+
+          {lead.username && lead.password && (
+            <div className="mt-6 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/5 p-4 text-left text-sm">
+              <p className="mb-2 font-semibold text-brand-black">
+                Seus dados de acesso
+              </p>
+              <p className="text-zinc-700">
+                Usuário:{" "}
+                <span className="font-medium text-brand-black">
+                  {lead.username}
+                </span>
+              </p>
+              <p className="text-zinc-700">
+                Senha:{" "}
+                <span className="font-medium text-brand-black">
+                  {lead.password}
+                </span>
+              </p>
+            </div>
+          )}
 
           {venc && (venc.expDate || venc.status) && (
             <div className="mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
