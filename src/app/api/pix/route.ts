@@ -1,26 +1,26 @@
 import { NextResponse } from "next/server";
-import { plans } from "@/lib/plans";
+import { getPackage, priceReais } from "@/lib/packages";
 import { createTransaction, getTransaction } from "@/lib/fastdepix";
 
-// Cria uma cobrança PIX para o plano escolhido.
+// Cria uma cobrança PIX para o pacote escolhido.
 export async function POST(request: Request) {
-  let planId = "";
+  let packageId = "";
   let phone = "";
   try {
     const body = await request.json();
-    planId = String(body?.planId ?? "");
+    packageId = String(body?.packageId ?? "");
     phone = String(body?.phone ?? "");
   } catch {
     // corpo inválido
   }
 
-  // Valida o plano no servidor (o valor vem daqui, não do cliente).
-  const plan = plans.find((p) => p.id === planId);
-  if (!plan) {
-    return NextResponse.json({ error: "Plano inválido." }, { status: 400 });
+  // Valida o pacote no servidor (o valor vem daqui, não do cliente).
+  const pkg = getPackage(packageId);
+  if (!pkg) {
+    return NextResponse.json({ error: "Pacote inválido." }, { status: 400 });
   }
 
-  // notification_url = webhook público deste site (para a futura geração de acesso).
+  // notification_url = webhook público deste site (para robustez futura).
   const host = request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
   const notificationUrl =
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   try {
     const tx = await createTransaction({
-      amount: plan.price,
+      amount: priceReais(pkg.priceCents),
       phone,
       notificationUrl,
     });

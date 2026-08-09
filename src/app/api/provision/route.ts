@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { plans } from "@/lib/plans";
+import { getPackage, priceReais } from "@/lib/packages";
 import { getTransaction } from "@/lib/fastdepix";
-import { createCustomer, packageIdForPlan } from "@/lib/sigma";
+import { createCustomer } from "@/lib/sigma";
 import { sendAccessEmail } from "@/lib/email";
 
 function genUsername(): string {
@@ -13,25 +13,32 @@ function genPassword(): string {
 }
 
 // Provisiona o acesso após o pagamento: confirma a transação na FastDePix,
-// cria o cliente no Sigma conforme o plano e envia as credenciais por e-mail.
+// cria o cliente no Sigma com o pacote escolhido e envia as credenciais.
 export async function POST(request: Request) {
   let transactionId = "";
+  let packageId = "";
   let email = "";
   let phone = "";
   try {
     const body = await request.json();
     transactionId = String(body?.transactionId ?? "");
+    packageId = String(body?.packageId ?? "");
     email = String(body?.email ?? "").trim();
     phone = String(body?.phone ?? "").trim();
   } catch {
     // corpo inválido
   }
 
-  if (!transactionId) {
+  if (!transactionId || !packageId) {
     return NextResponse.json(
-      { error: "transactionId obrigatório." },
+      { error: "transactionId e packageId obrigatórios." },
       { status: 400 },
     );
+  }
+
+  const pkg = getPackage(packageId);
+  if (!pkg) {
+    return NextResponse.json({ error: "Pacote inválido." }, { status: 400 });
   }
 
   // Confirma o pagamento direto na fonte (evita provisionar sem pagar).
@@ -53,20 +60,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Determina o plano pelo valor pago (não confia no cliente).
-  const plan = plans.find((p) => Number(p.price) === Number(tx.amount));
-  if (!plan) {
+  // Confere que o valor pago corresponde ao preço do pacote.
+  if (Math.abs(Number(tx.amount) - priceReais(pkg.priceCents)) > 0.01) {
     return NextResponse.json(
-      { error: "Valor pago não corresponde a um plano." },
+      { error: "Valor pago não corresponde ao pacote." },
       { status: 400 },
-    );
-  }
-
-  const packageId = packageIdForPlan(plan.id);
-  if (!packageId) {
-    return NextResponse.json(
-      { error: `Pacote não configurado para o plano "${plan.id}".` },
-      { status: 500 },
     );
   }
 
@@ -75,13 +73,13 @@ export async function POST(request: Request) {
 
   try {
     await createCustomer({
-      packageId,
+      packageId: pkg.id,
       username,
       password,
       name: email ? email.split("@")[0] : undefined,
       email: email || undefined,
       whatsapp: phone ? phone.replace(/\D/g, "") : undefined,
-      connections: Number(process.env.SIGMA_CONNECTIONS ?? 1),
+      connections: pkg.telas,
     });
   } catch (err) {
     console.error("Erro ao criar cliente no Sigma:", err);

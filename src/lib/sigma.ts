@@ -8,16 +8,6 @@ const TOKEN = process.env.SIGMA_API_TOKEN;
 // userId (hashid) do dono das contas criadas — opcional.
 const OWNER_ID = process.env.SIGMA_OWNER_ID;
 
-// Mapeia o plano do site para o packageId do painel (via env vars).
-export function packageIdForPlan(planId: string): string | null {
-  const map: Record<string, string | undefined> = {
-    mensal: process.env.SIGMA_PACKAGE_MENSAL,
-    semestral: process.env.SIGMA_PACKAGE_SEMESTRAL,
-    anual: process.env.SIGMA_PACKAGE_ANUAL,
-  };
-  return map[planId] ?? null;
-}
-
 export type CreateCustomerInput = {
   packageId: string;
   username: string;

@@ -1,0 +1,72 @@
+// Catálogo de pacotes do painel Sigma (FTS Panel).
+// Preço = plan_price (em centavos). O id é o packageId usado na criação do cliente.
+
+export type DurationKey =
+  | "mensal"
+  | "bimestral"
+  | "trimestral"
+  | "semestral"
+  | "anual";
+
+export type Package = {
+  id: string; // packageId do Sigma
+  duration: DurationKey;
+  durationLabel: string;
+  months: number;
+  telas: 1 | 2;
+  adult: boolean;
+  priceCents: number;
+};
+
+export const packages: Package[] = [
+  // ===== SEM ADULTO — 1 tela =====
+  { id: "z2BDvoWrkj", duration: "mensal", durationLabel: "Mensal", months: 1, telas: 1, adult: false, priceCents: 3490 },
+  { id: "EMeWepDnN9", duration: "bimestral", durationLabel: "Bimestral", months: 2, telas: 1, adult: false, priceCents: 4990 },
+  { id: "qK4WrQDeNj", duration: "trimestral", durationLabel: "Trimestral", months: 3, telas: 1, adult: false, priceCents: 8490 },
+  { id: "7loL7aMWXM", duration: "semestral", durationLabel: "Semestral", months: 6, telas: 1, adult: false, priceCents: 14490 },
+  { id: "we6Wnw1K8N", duration: "anual", durationLabel: "Anual", months: 12, telas: 1, adult: false, priceCents: 22500 },
+
+  // ===== SEM ADULTO — 2 telas =====
+  { id: "kRXDgwDexV", duration: "mensal", durationLabel: "Mensal", months: 1, telas: 2, adult: false, priceCents: 4990 },
+  { id: "PkaL4dLgrz", duration: "bimestral", durationLabel: "Bimestral", months: 2, telas: 2, adult: false, priceCents: 9180 },
+  { id: "nVrW8oDKaN", duration: "trimestral", durationLabel: "Trimestral", months: 3, telas: 2, adult: false, priceCents: 13990 },
+  { id: "BV4D3rrLaq", duration: "semestral", durationLabel: "Semestral", months: 6, telas: 2, adult: false, priceCents: 24490 },
+  { id: "rlKWOw3Wzo", duration: "anual", durationLabel: "Anual", months: 12, telas: 2, adult: false, priceCents: 39990 },
+
+  // ===== COM ADULTO — 1 tela =====
+  { id: "o231qzL4qz", duration: "mensal", durationLabel: "Mensal", months: 1, telas: 1, adult: true, priceCents: 3490 },
+  { id: "VpKDaJWRAa", duration: "bimestral", durationLabel: "Bimestral", months: 2, telas: 1, adult: true, priceCents: 4990 },
+  { id: "bOxLAQLZ7a", duration: "trimestral", durationLabel: "Trimestral", months: 3, telas: 1, adult: true, priceCents: 8490 },
+  { id: "JOALy014wx", duration: "semestral", durationLabel: "Semestral", months: 6, telas: 1, adult: true, priceCents: 14490 },
+  { id: "b8K1x6DvGN", duration: "anual", durationLabel: "Anual", months: 12, telas: 1, adult: true, priceCents: 22500 },
+
+  // ===== COM ADULTO — 2 telas =====
+  { id: "BKADdn1lrn", duration: "mensal", durationLabel: "Mensal", months: 1, telas: 2, adult: true, priceCents: 4990 },
+  { id: "ryJDzKWgeV", duration: "bimestral", durationLabel: "Bimestral", months: 2, telas: 2, adult: true, priceCents: 9180 },
+  { id: "Yxl1jB1Mjm", duration: "trimestral", durationLabel: "Trimestral", months: 3, telas: 2, adult: true, priceCents: 13990 },
+  { id: "QywDmRWpRJ", duration: "semestral", durationLabel: "Semestral", months: 6, telas: 2, adult: true, priceCents: 24490 },
+  { id: "x2YD0v1QPa", duration: "anual", durationLabel: "Anual", months: 12, telas: 2, adult: true, priceCents: 39990 },
+];
+
+export function getPackage(id: string): Package | undefined {
+  return packages.find((p) => p.id === id);
+}
+
+// Lista os pacotes de uma combinação (telas + adulto), ordenados por duração.
+export function listPackages(telas: 1 | 2, adult: boolean): Package[] {
+  return packages
+    .filter((p) => p.telas === telas && p.adult === adult)
+    .sort((a, b) => a.months - b.months);
+}
+
+export function priceReais(cents: number): number {
+  return cents / 100;
+}
+
+// Formata centavos em "34,90".
+export function formatPrice(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
