@@ -1,7 +1,30 @@
 "use server";
 
-import { getPurchase } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { getPurchase, setSetting } from "@/lib/db";
 import { sendAccessEmail } from "@/lib/email";
+
+export type SettingsState = { ok?: boolean; error?: string };
+
+// Salva as configurações de marketing (Google Ads) no banco.
+export async function saveSettings(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const googleAdsId = String(formData.get("google_ads_id") ?? "").trim();
+  const conversionLabel = String(
+    formData.get("google_conversion_label") ?? "",
+  ).trim();
+  try {
+    await setSetting("google_ads_id", googleAdsId);
+    await setSetting("google_conversion_label", conversionLabel);
+    revalidatePath("/admin");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { error: (err as Error).message ?? "Falha ao salvar." };
+  }
+}
 
 // Reenvia o e-mail de acesso de uma compra usando os dados salvos no banco.
 export async function resendEmail(

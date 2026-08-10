@@ -1,5 +1,7 @@
 import { listPurchases, hasDb, type Purchase } from "@/lib/db";
+import { loadSettings } from "@/lib/settings";
 import { ResendEmailButton } from "./resend-button";
+import { SettingsForm } from "./settings-form";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +66,7 @@ export default async function AdminPage({
     }
   }
 
+  const settings = await loadSettings();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const cards = [
     { label: "Recebido (pago)", value: brl(paidAmount) },
@@ -98,6 +101,12 @@ export default async function AdminPage({
             </div>
           ))}
         </div>
+
+        {/* Configuração da tag de conversão */}
+        <SettingsForm
+          googleAdsId={settings.googleAdsId}
+          conversionLabel={settings.conversionLabel}
+        />
 
         {/* Filtro */}
         <form

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   listPackages,
@@ -78,6 +78,12 @@ export default function PlanosPage() {
   // Seleção: nº de telas e conteúdo adulto (define quais pacotes exibir).
   const [telas, setTelas] = useState<1 | 2>(1);
   const [adult, setAdult] = useState(false);
+  // Config de marketing (Google Ads) e trava de disparo único da conversão.
+  const [config, setConfig] = useState<{
+    googleAdsId: string;
+    conversionLabel: string;
+  } | null>(null);
+  const conversionFired = useRef(false);
 
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
@@ -244,6 +250,36 @@ export default function PlanosPage() {
       clearInterval(id);
     };
   }, [pix, pixPaid, lead]);
+
+  // Carrega a config de marketing (Google Ads) uma vez.
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) =>
+        setConfig({
+          googleAdsId: d?.googleAdsId ?? "",
+          conversionLabel: d?.conversionLabel ?? "",
+        }),
+      )
+      .catch(() => {});
+  }, []);
+
+  // Ao confirmar o pagamento, dispara o evento de conversão do Google Ads.
+  useEffect(() => {
+    if (!pixPaid || !pix || conversionFired.current) return;
+    if (!config?.googleAdsId || !config.conversionLabel) return;
+    const gtag = (
+      window as unknown as { gtag?: (...args: unknown[]) => void }
+    ).gtag;
+    if (typeof gtag !== "function") return;
+    conversionFired.current = true;
+    gtag("event", "conversion", {
+      send_to: `${config.googleAdsId}/${config.conversionLabel}`,
+      value: pix.amount,
+      currency: "BRL",
+      transaction_id: String(pix.id),
+    });
+  }, [pixPaid, pix, config]);
 
   // Gera a cobrança PIX (FastDePix) para o pacote escolhido e abre o modal.
   const iniciarPagamento = async (pkg: Package) => {
