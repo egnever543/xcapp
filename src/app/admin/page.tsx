@@ -3,6 +3,7 @@ import {
   type TxListItem,
   type TxReport,
 } from "@/lib/fastdepix";
+import { ResendEmailButton } from "./resend-button";
 
 // Página dinâmica (usa filtros da query).
 export const dynamic = "force-dynamic";
@@ -160,19 +161,20 @@ export default async function AdminPage({
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Telefone</th>
                 <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {error && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-red-600">
+                  <td colSpan={7} className="px-4 py-8 text-center text-red-600">
                     {error}
                   </td>
                 </tr>
               )}
               {!error && items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                     Nenhuma transação encontrada.
                   </td>
                 </tr>
@@ -194,6 +196,9 @@ export default async function AdminPage({
                     </td>
                     <td className="px-4 py-3">{t.payerPhone ?? "—"}</td>
                     <td className="px-4 py-3">{t.userName ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <ResendEmailButton txId={t.id} />
+                    </td>
                   </tr>
                 ))}
             </tbody>
