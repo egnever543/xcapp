@@ -1,10 +1,18 @@
-import Script from "next/script";
+"use client";
 
-// Injeta o Google Ads (gtag.js) usando o ID definido na variável de ambiente
-// NEXT_PUBLIC_GOOGLE_ADS_ID (ex.: "AW-XXXXXXXXX"). Se não estiver definida,
-// nada é renderizado.
+import Script from "next/script";
+import { useEffect, useState } from "react";
+
+// Injeta o Google Ads (gtag.js) com o ID configurado no painel (via /api/config).
 export function GoogleAds() {
-  const id = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+  const [id, setId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) => setId(d?.googleAdsId || null))
+      .catch(() => {});
+  }, []);
 
   if (!id) return null;
 

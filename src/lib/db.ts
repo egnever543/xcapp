@@ -46,6 +46,47 @@ function ensureSchema(): Promise<void> {
   return schemaReady;
 }
 
+// ===== Configurações do site (key-value) =====
+
+let settingsSchemaReady: Promise<void> | null = null;
+function ensureSettingsSchema(): Promise<void> {
+  if (!settingsSchemaReady) {
+    const sql = db();
+    settingsSchemaReady = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS site_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TIMESTAMPTZ DEFAULT now()
+        )
+      `;
+    })();
+  }
+  return settingsSchemaReady;
+}
+
+export async function getSettings(): Promise<Record<string, string>> {
+  await ensureSettingsSchema();
+  const sql = db();
+  const rows = (await sql`SELECT key, value FROM site_settings`) as {
+    key: string;
+    value: string | null;
+  }[];
+  const out: Record<string, string> = {};
+  for (const r of rows) if (r.value != null) out[r.key] = r.value;
+  return out;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await ensureSettingsSchema();
+  const sql = db();
+  await sql`
+    INSERT INTO site_settings (key, value, updated_at)
+    VALUES (${key}, ${value}, now())
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+  `;
+}
+
 export type Purchase = {
   transactionId: string;
   email: string | null;
