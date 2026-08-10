@@ -27,6 +27,14 @@ function ensureKey() {
   if (!API_KEY) throw new Error("FASTDEPIX_API_KEY não configurada.");
 }
 
+function authHeaders() {
+  return {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+}
+
 function mapTx(d: RawTransaction): PixTransaction {
   return {
     id: d.id,
@@ -89,4 +97,106 @@ export async function getTransaction(
     throw new Error(json?.message ?? "Falha ao consultar a cobrança.");
   }
   return mapTx(json.data);
+}
+
+// ===== Admin: listagem e relatório de transações =====
+
+export type TxListItem = {
+  id: number;
+  amount: number;
+  status: string;
+  payerPhone: string | null;
+  userName: string | null;
+  createdAt: string | null;
+};
+
+export type TxListResult = {
+  items: TxListItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+// Lista transações com filtros (para o painel admin).
+export async function listTransactions(params: {
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}): Promise<TxListResult> {
+  ensureKey();
+  const url = new URL(`${BASE_URL}/transactions`);
+  if (params.status) url.searchParams.set("status", params.status);
+  if (params.dateFrom) url.searchParams.set("date_from", params.dateFrom);
+  if (params.dateTo) url.searchParams.set("date_to", params.dateTo);
+  url.searchParams.set("page", String(params.page ?? 1));
+  url.searchParams.set("limit", String(params.limit ?? 20));
+
+  const res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
+  const json = await res.json();
+  if (!res.ok || !json?.success) {
+    throw new Error(json?.message ?? "Falha ao listar transações.");
+  }
+
+  const data = json.data ?? {};
+  const list = Array.isArray(data.transactions) ? data.transactions : [];
+  return {
+    items: list.map(
+      (t: {
+        id: number;
+        amount: number | string;
+        status: string;
+        payer_phone?: string | null;
+        user?: { name?: string | null };
+        created_at?: string | null;
+      }) => ({
+        id: t.id,
+        amount: Number(t.amount),
+        status: String(t.status),
+        payerPhone: t.payer_phone ?? null,
+        userName: t.user?.name ?? null,
+        createdAt: t.created_at ?? null,
+      }),
+    ),
+    total: data.pagination?.total ?? list.length,
+    page: data.pagination?.current_page ?? 1,
+    totalPages: data.pagination?.total_pages ?? 1,
+  };
+}
+
+export type TxReport = {
+  totalTransactions: number;
+  totalAmount: number;
+  paidTransactions: number;
+  paidAmount: number;
+  pendingTransactions: number;
+  expiredTransactions: number;
+  averageAmount: number;
+};
+
+// Resumo do período (GET /reports/transactions).
+export async function getTransactionsReport(params: {
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<TxReport | null> {
+  ensureKey();
+  const url = new URL(`${BASE_URL}/reports/transactions`);
+  if (params.dateFrom) url.searchParams.set("date_from", params.dateFrom);
+  if (params.dateTo) url.searchParams.set("date_to", params.dateTo);
+
+  const res = await fetch(url, { headers: authHeaders(), cache: "no-store" });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) return null;
+
+  const s = json.data?.summary ?? {};
+  return {
+    totalTransactions: Number(s.total_transactions ?? 0),
+    totalAmount: Number(s.total_amount ?? 0),
+    paidTransactions: Number(s.paid_transactions ?? 0),
+    paidAmount: Number(s.paid_amount ?? 0),
+    pendingTransactions: Number(s.pending_transactions ?? 0),
+    expiredTransactions: Number(s.expired_transactions ?? 0),
+    averageAmount: Number(s.average_amount ?? 0),
+  };
 }
