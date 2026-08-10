@@ -1,7 +1,6 @@
 import {
-  listTransactions,
-  getTransactionsReport,
-  type TxListResult,
+  getSitePurchases,
+  type TxListItem,
   type TxReport,
 } from "@/lib/fastdepix";
 
@@ -50,20 +49,22 @@ export default async function AdminPage({
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
 
   let report: TxReport | null = null;
-  let list: TxListResult | null = null;
+  let items: TxListItem[] = [];
+  let totalPages = 1;
+  let total = 0;
   let error: string | null = null;
 
   try {
-    [report, list] = await Promise.all([
-      getTransactionsReport({ dateFrom: from || undefined, dateTo: to || undefined }),
-      listTransactions({
-        status: status || undefined,
-        dateFrom: from || undefined,
-        dateTo: to || undefined,
-        page,
-        limit: 20,
-      }),
-    ]);
+    const purchases = await getSitePurchases({
+      status: status || undefined,
+      dateFrom: from || undefined,
+      dateTo: to || undefined,
+    });
+    report = purchases.summary;
+    total = purchases.items.length;
+    const pageSize = 20;
+    totalPages = Math.max(1, Math.ceil(total / pageSize));
+    items = purchases.items.slice((page - 1) * pageSize, page * pageSize);
   } catch (err) {
     error = (err as Error).message ?? "Falha ao carregar os dados.";
   }
@@ -169,7 +170,7 @@ export default async function AdminPage({
                   </td>
                 </tr>
               )}
-              {!error && list && list.items.length === 0 && (
+              {!error && items.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
                     Nenhuma transação encontrada.
@@ -177,7 +178,7 @@ export default async function AdminPage({
                 </tr>
               )}
               {!error &&
-                list?.items.map((t) => (
+                items.map((t) => (
                   <tr key={t.id} className="border-t border-zinc-100">
                     <td className="px-4 py-3 text-zinc-500">{t.id}</td>
                     <td className="px-4 py-3">{formatDate(t.createdAt)}</td>
@@ -200,10 +201,10 @@ export default async function AdminPage({
         </div>
 
         {/* Paginação */}
-        {list && list.totalPages > 1 && (
+        {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm text-zinc-600">
             <span>
-              Página {list.page} de {list.totalPages} · {list.total} no total
+              Página {page} de {totalPages} · {total} no total
             </span>
             <div className="flex gap-2">
               {page > 1 && (
@@ -214,7 +215,7 @@ export default async function AdminPage({
                   Anterior
                 </a>
               )}
-              {page < list.totalPages && (
+              {page < totalPages && (
                 <a
                   href={`?${new URLSearchParams({ status, from, to, page: String(page + 1) }).toString()}`}
                   className="rounded-lg border border-zinc-300 px-3 py-1.5 hover:bg-zinc-100"
