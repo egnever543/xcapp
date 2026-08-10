@@ -1,0 +1,109 @@
+import crypto from "crypto";
+import { getPackage, priceReais } from "@/lib/packages";
+import { getTransaction } from "@/lib/fastdepix";
+import { createCustomer } from "@/lib/sigma";
+import { sendAccessEmail } from "@/lib/email";
+import {
+  getPurchase,
+  claimProvision,
+  releaseProvision,
+  saveCredentials,
+} from "@/lib/db";
+
+function genUsername(): string {
+  return "xc" + crypto.randomBytes(4).toString("hex");
+}
+function genPassword(): string {
+  return crypto.randomBytes(5).toString("hex");
+}
+
+export type ProvisionResult =
+  | { ok: true; username: string; password: string }
+  | { ok: false; status: number; error: string };
+
+// Provisiona o acesso de uma compra: confirma o pagamento na FastDePix, cria a
+// conta no Sigma (uma única vez), grava as credenciais e envia o e-mail.
+// Idempotente: chamável pelo cliente e pelo webhook sem duplicar contas.
+export async function provisionPurchase(
+  transactionId: string,
+): Promise<ProvisionResult> {
+  const purchase = await getPurchase(transactionId);
+  if (!purchase) {
+    return { ok: false, status: 404, error: "Compra não encontrada." };
+  }
+
+  // Já provisionada: devolve as credenciais salvas (idempotência).
+  if (purchase.provisioned && purchase.username && purchase.password) {
+    return {
+      ok: true,
+      username: purchase.username,
+      password: purchase.password,
+    };
+  }
+
+  const pkg = purchase.packageId ? getPackage(purchase.packageId) : undefined;
+  if (!pkg) {
+    return { ok: false, status: 400, error: "Pacote inválido." };
+  }
+
+  // Confirma o pagamento na fonte.
+  let tx;
+  try {
+    tx = await getTransaction(transactionId);
+  } catch {
+    return { ok: false, status: 502, error: "Não foi possível confirmar o pagamento." };
+  }
+  if (tx.status !== "paid" && tx.status !== "approved") {
+    return { ok: false, status: 402, error: "Pagamento ainda não confirmado." };
+  }
+  if (Math.abs(Number(tx.amount) - priceReais(pkg.priceCents)) > 0.01) {
+    return { ok: false, status: 400, error: "Valor pago não corresponde ao pacote." };
+  }
+
+  // Reivindica o provisionamento (só um chamador cria a conta).
+  const claimed = await claimProvision(transactionId);
+  if (!claimed) {
+    // Outro fluxo já provisionou (ou está provisionando): devolve o que houver.
+    const again = await getPurchase(transactionId);
+    if (again?.username && again?.password) {
+      return { ok: true, username: again.username, password: again.password };
+    }
+    return { ok: false, status: 409, error: "Provisionamento em andamento." };
+  }
+
+  const username = genUsername();
+  const password = genPassword();
+
+  try {
+    await createCustomer({
+      packageId: pkg.id,
+      username,
+      password,
+      name: purchase.email ? purchase.email.split("@")[0] : undefined,
+      email: purchase.email ?? undefined,
+      whatsapp: purchase.phone ? purchase.phone.replace(/\D/g, "") : undefined,
+      connections: pkg.telas,
+    });
+  } catch (err) {
+    // Falhou: libera a trava para permitir nova tentativa.
+    await releaseProvision(transactionId);
+    return {
+      ok: false,
+      status: 502,
+      error: (err as Error).message ?? "Falha ao criar o acesso.",
+    };
+  }
+
+  await saveCredentials(transactionId, username, password);
+
+  // Envia as credenciais por e-mail (não bloqueia se falhar).
+  if (purchase.email) {
+    try {
+      await sendAccessEmail({ email: purchase.email, username, password });
+    } catch (err) {
+      console.error("Erro ao enviar e-mail de acesso:", err);
+    }
+  }
+
+  return { ok: true, username, password };
+}
