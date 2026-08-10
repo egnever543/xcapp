@@ -257,7 +257,11 @@ export default function PlanosPage() {
       const r = await fetch("/api/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pkg.id, phone: lead?.phone }),
+        body: JSON.stringify({
+          packageId: pkg.id,
+          phone: lead?.phone,
+          email: lead?.email,
+        }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) {

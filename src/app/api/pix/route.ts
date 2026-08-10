@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { getPackage, priceReais } from "@/lib/packages";
 import { createTransaction, getTransaction } from "@/lib/fastdepix";
+import { savePurchaseInit, hasDb } from "@/lib/db";
 
 // Cria uma cobrança PIX para o pacote escolhido.
 export async function POST(request: Request) {
   let packageId = "";
   let phone = "";
+  let email = "";
   try {
     const body = await request.json();
     packageId = String(body?.packageId ?? "");
     phone = String(body?.phone ?? "");
+    email = String(body?.email ?? "");
   } catch {
     // corpo inválido
   }
@@ -20,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pacote inválido." }, { status: 400 });
   }
 
-  // notification_url = webhook público deste site (para robustez futura).
+  // notification_url = webhook público deste site (identifica nossas cobranças).
   const host = request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
   const notificationUrl =
@@ -32,6 +35,23 @@ export async function POST(request: Request) {
       phone,
       notificationUrl,
     });
+
+    // Registra a compra no banco (para histórico e provisionamento robusto).
+    if (hasDb()) {
+      try {
+        await savePurchaseInit({
+          transactionId: String(tx.id),
+          email: email || undefined,
+          phone: phone || undefined,
+          packageId: pkg.id,
+          packageLabel: `${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`,
+          amount: priceReais(pkg.priceCents),
+        });
+      } catch (err) {
+        console.error("Erro ao registrar a compra:", err);
+      }
+    }
+
     return NextResponse.json({
       id: tx.id,
       amount: tx.amount,

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { provisionPurchase } from "@/lib/provisioning";
+import { updateStatus } from "@/lib/db";
 
 // Secret do webhook (opcional). Se definido, valida X-Webhook-Signature.
 const SECRET = process.env.FASTDEPIX_WEBHOOK_SECRET;
 
-// Recebe os webhooks da FastDePix (transaction.approved / transaction.paid, etc.).
-// Ponto de encaixe para a futura API que gera o acesso e envia por e-mail.
+// Recebe os webhooks da FastDePix. Em transaction.approved/paid, provisiona o
+// acesso (mesmo que o cliente tenha fechado a aba). Idempotente.
 export async function POST(request: Request) {
   const raw = await request.text();
 
@@ -22,26 +24,31 @@ export async function POST(request: Request) {
     }
   }
 
-  let data: Record<string, unknown> = {};
+  let data: { transaction_id?: number | string; status?: string } = {};
   try {
     data = JSON.parse(raw);
   } catch {
     // payload não-JSON
   }
 
-  // TODO (futuro): ao receber transaction.approved/paid, gerar o acesso
-  // conforme o pacote e enviar os dados por e-mail (idempotente por transaction_id).
-  console.log(
-    "FastDePix webhook:",
-    data?.status ?? data?.event,
-    data?.transaction_id ?? "",
-  );
+  const transactionId = data.transaction_id ? String(data.transaction_id) : "";
+  const status = data.status ?? "";
+
+  if (transactionId) {
+    try {
+      if (status === "paid" || status === "approved") {
+        await provisionPurchase(transactionId);
+      } else if (status) {
+        await updateStatus(transactionId, status);
+      }
+    } catch (err) {
+      console.error("Erro ao processar webhook:", err);
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }
 
-// Fallback: a FastDePix tenta GET com payload na query se o POST retornar 405.
-// Aqui o POST responde 200, então o GET serve só para verificação/health.
 export async function GET() {
   return NextResponse.json({ ok: true });
 }

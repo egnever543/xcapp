@@ -1,51 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { resendEmail } from "./actions";
 
-// Botão por transação para disparar um e-mail de TESTE (valida a pipeline do
-// Resend). Pergunta o destinatário e envia com credenciais de exemplo — a
-// FastDePix não guarda o e-mail/login/senha reais da compra.
-export function ResendEmailButton({ txId }: { txId: number }) {
-  const [state, setState] = useState<"idle" | "sending" | "ok" | "error">(
-    "idle",
-  );
+// Botão por compra: reenvia o e-mail de acesso usando os dados salvos.
+export function ResendEmailButton({
+  transactionId,
+  disabled,
+}: {
+  transactionId: string;
+  disabled?: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [state, setState] = useState<"idle" | "ok" | "error">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
 
-  const onClick = async () => {
-    const email = window.prompt("Enviar e-mail de teste para qual endereço?");
-    if (!email) return;
-    setState("sending");
-    try {
-      const r = await fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          username: `teste-${txId}`,
-          password: "senha-de-teste",
-        }),
-      });
+  const onClick = () => {
+    startTransition(async () => {
+      const r = await resendEmail(transactionId);
       setState(r.ok ? "ok" : "error");
-    } catch {
-      setState("error");
-    }
-    setTimeout(() => setState("idle"), 4000);
+      setMsg(r.error ?? null);
+      setTimeout(() => setState("idle"), 4000);
+    });
   };
 
-  const label =
-    state === "sending"
-      ? "Enviando…"
-      : state === "ok"
-        ? "Enviado ✓"
-        : state === "error"
-          ? "Falhou ✗"
-          : "Testar e-mail";
+  const label = pending
+    ? "Enviando…"
+    : state === "ok"
+      ? "Enviado ✓"
+      : state === "error"
+        ? "Falhou ✗"
+        : "Reenviar e-mail";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={state === "sending"}
-      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+      disabled={disabled || pending}
+      title={msg ?? undefined}
+      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
         state === "ok"
           ? "border-green-300 text-green-700"
           : state === "error"
