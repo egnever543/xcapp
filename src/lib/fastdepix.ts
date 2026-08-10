@@ -108,6 +108,7 @@ export type TxListItem = {
   payerPhone: string | null;
   userName: string | null;
   createdAt: string | null;
+  notificationUrl: string | null;
 };
 
 export type TxListResult = {
@@ -150,6 +151,7 @@ export async function listTransactions(params: {
         payer_phone?: string | null;
         user?: { name?: string | null };
         created_at?: string | null;
+        notification_url?: string | null;
       }) => ({
         id: t.id,
         amount: Number(t.amount),
@@ -157,6 +159,7 @@ export async function listTransactions(params: {
         payerPhone: t.payer_phone ?? null,
         userName: t.user?.name ?? null,
         createdAt: t.created_at ?? null,
+        notificationUrl: t.notification_url ?? null,
       }),
     ),
     total: data.pagination?.total ?? list.length,
@@ -174,6 +177,62 @@ export type TxReport = {
   expiredTransactions: number;
   averageAmount: number;
 };
+
+// Marca que identifica as cobranças criadas por ESTE site: toda cobrança nossa
+// é criada com notification_url apontando para /api/webhook.
+const SITE_MARKER = "/api/webhook";
+
+export type SitePurchases = {
+  items: TxListItem[];
+  summary: TxReport;
+};
+
+// Retorna apenas as cobranças criadas por este site (filtradas pela marca no
+// notification_url), paginando a FastDePix e calculando os totais a partir delas.
+export async function getSitePurchases(params: {
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  maxPages?: number;
+}): Promise<SitePurchases> {
+  ensureKey();
+  const maxPages = params.maxPages ?? 25;
+  const all: TxListItem[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await listTransactions({
+      status: params.status,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
+      page,
+      limit: 20,
+    });
+    for (const t of res.items) {
+      if ((t.notificationUrl ?? "").includes(SITE_MARKER)) all.push(t);
+    }
+    totalPages = res.totalPages;
+    page++;
+  } while (page <= totalPages && page <= maxPages);
+
+  const paid = all.filter(
+    (t) => t.status === "paid" || t.status === "approved",
+  );
+  const paidAmount = paid.reduce((s, t) => s + t.amount, 0);
+
+  const summary: TxReport = {
+    totalTransactions: all.length,
+    totalAmount: all.reduce((s, t) => s + t.amount, 0),
+    paidTransactions: paid.length,
+    paidAmount,
+    pendingTransactions: all.filter((t) => t.status === "pending").length,
+    expiredTransactions: all.filter((t) => t.status === "expired").length,
+    averageAmount: paid.length ? paidAmount / paid.length : 0,
+  };
+
+  return { items: all, summary };
+}
 
 // Resumo do período (GET /reports/transactions).
 export async function getTransactionsReport(params: {
