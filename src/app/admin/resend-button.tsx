@@ -43,7 +43,7 @@ export function ResendEmailButton({
           ? "border-green-300 text-green-700"
           : state === "error"
             ? "border-red-300 text-red-700"
-            : "border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+            : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
       }`}
     >
       {label}

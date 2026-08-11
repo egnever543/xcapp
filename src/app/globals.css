@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Habilita `dark:` quando um ancestral tiver data-theme="dark" (tema do admin). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;

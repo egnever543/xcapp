@@ -18,31 +18,31 @@ export function SettingsForm({
   return (
     <form
       action={action}
-      className="mt-8 rounded-2xl border border-zinc-200 p-5"
+      className="mt-8 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-700"
     >
       <h2 className="text-lg font-semibold">Tag de conversão (Google Ads)</h2>
-      <p className="mt-1 text-sm text-zinc-600">
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
         Preencha para enviar as vendas ao Google Ads. O evento de conversão é
         disparado automaticamente quando o pagamento é confirmado.
       </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-zinc-600">AW ID (tag base)</span>
+          <span className="text-zinc-600 dark:text-zinc-300">AW ID (tag base)</span>
           <input
             name="google_ads_id"
             defaultValue={googleAdsId}
             placeholder="AW-16999732658"
-            className="w-56 rounded-lg border border-zinc-300 px-3 py-2"
+            className="w-56 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-zinc-600">Rótulo da conversão</span>
+          <span className="text-zinc-600 dark:text-zinc-300">Rótulo da conversão</span>
           <input
             name="google_conversion_label"
             defaultValue={conversionLabel}
             placeholder="AbC-D_efGhIjKl"
-            className="w-56 rounded-lg border border-zinc-300 px-3 py-2"
+            className="w-56 rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
           />
         </label>
         <button
@@ -62,7 +62,7 @@ export function SettingsForm({
         )}
       </div>
 
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
         O <strong>rótulo</strong> é a parte após a barra no <code>send_to</code>{" "}
         da sua conversão (ex.: em <code>AW-16999732658/AbC-D_efGhIjKl</code>, o
         rótulo é <code>AbC-D_efGhIjKl</code>). Encontre em Google Ads → Metas →
