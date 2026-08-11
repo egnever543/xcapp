@@ -790,14 +790,27 @@ export default function PlanosPage() {
           ))}
         </div>
 
-        {whatsappSupportHref && (
-          <div className="mt-8 flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-zinc-600">Ainda com dúvidas?</p>
-            <WhatsAppButton href={whatsappSupportHref}>
-              Falar no WhatsApp
-            </WhatsAppButton>
-          </div>
-        )}
+        <div className="mt-8 flex flex-col items-center gap-4 text-center">
+          {whatsappSupportHref && (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-sm text-zinc-600">Ainda com dúvidas?</p>
+              <WhatsAppButton href={whatsappSupportHref}>
+                Falar no WhatsApp
+              </WhatsAppButton>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("planos")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="rounded-full bg-brand-blue px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-blue-dark"
+          >
+            Escolher um plano
+          </button>
+        </div>
 
         {/* SEO: dados estruturados FAQPage */}
         <script
