@@ -39,6 +39,50 @@ const whatsappSupportHref = whatsappNumber
     )}`
   : null;
 
+// Perguntas frequentes exibidas na página de compra.
+const faq: { q: string; a: string }[] = [
+  {
+    q: "Como recebo meu acesso depois do pagamento?",
+    a: "Assim que o PIX é confirmado, enviamos usuário, senha e a URL do servidor por e-mail — e também mostramos na tela.",
+  },
+  {
+    q: "Em quanto tempo é liberado?",
+    a: "Na hora. A ativação é automática logo após a confirmação do pagamento.",
+  },
+  {
+    q: "Funciona em quais aparelhos?",
+    a: "Smart TV, TV Box, celular (Android e iOS), computador e apps compatíveis com Xtream Codes.",
+  },
+  {
+    q: "Quantas telas posso usar ao mesmo tempo?",
+    a: "Depende do plano escolhido: 1 ou 2 telas simultâneas.",
+  },
+  {
+    q: "Preciso de qual velocidade de internet?",
+    a: "Recomendamos a partir de ~15 Mbps para HD e ~25 Mbps para 4K.",
+  },
+  {
+    q: "Como faço o pagamento?",
+    a: "Por PIX, direto no site — rápido e seguro. O acesso é liberado automaticamente após a confirmação.",
+  },
+  {
+    q: "E se eu me arrepender da compra?",
+    a: "Você tem garantia de reembolso em até 7 dias. Se não gostar, devolvemos o valor pago.",
+  },
+  {
+    q: "Não recebi o e-mail, e agora?",
+    a: "Confira a caixa de spam. Se ainda assim não encontrar, fale com a gente no WhatsApp que reenviamos os dados na hora.",
+  },
+  {
+    q: "Tem fidelidade ou contrato?",
+    a: "Não. Você paga apenas pelo período escolhido e renova quando quiser.",
+  },
+  {
+    q: "Como faço para renovar?",
+    a: "É só voltar ao site e comprar novamente o período desejado.",
+  },
+];
+
 type Vencimento = {
   expDate: number | null; // timestamp Unix em segundos
   status: string | null;
@@ -727,6 +771,64 @@ export default function PlanosPage() {
           </div>
         </div>
       )}
+
+      {/* Perguntas frequentes */}
+      <section
+        id="faq"
+        className="mx-auto w-full max-w-3xl px-6 pb-16 pt-4"
+      >
+        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+          Perguntas frequentes
+        </h2>
+        <div className="mt-8 space-y-3">
+          {faq.map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-2xl border border-zinc-200 p-5 [&_svg]:open:rotate-180"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-brand-black">
+                {item.q}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 shrink-0 fill-none stroke-brand-blue transition-transform"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </summary>
+              <p className="mt-3 text-sm text-zinc-600">{item.a}</p>
+            </details>
+          ))}
+        </div>
+
+        {whatsappSupportHref && (
+          <div className="mt-8 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-zinc-600">Ainda com dúvidas?</p>
+            <WhatsAppButton href={whatsappSupportHref}>
+              Falar no WhatsApp
+            </WhatsAppButton>
+          </div>
+        )}
+
+        {/* SEO: dados estruturados FAQPage */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faq.map((item) => ({
+                "@type": "Question",
+                name: item.q,
+                acceptedAnswer: { "@type": "Answer", text: item.a },
+              })),
+            }),
+          }}
+        />
+      </section>
 
       {/* Rodapé */}
       <footer className="mt-auto border-t border-zinc-200 py-8">
