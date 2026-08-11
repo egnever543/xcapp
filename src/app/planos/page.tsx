@@ -10,18 +10,6 @@ import {
 import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
 import { WhatsAppButton } from "../whatsapp-button";
 
-// Screenshots do app exibidos na página de compra.
-// Para adicionar mais imagens, coloque os arquivos em /public/app e
-// acrescente novas entradas (src/alt/width/height) neste array.
-const appScreens = [
-  {
-    src: "/app/xtream-login.png",
-    alt: "Tela de login Xtream Codes do app xciptv",
-    width: 1332,
-    height: 746,
-  },
-];
-
 // Número de WhatsApp para compra (só dígitos, com DDI). Configurável por env var.
 const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(
   /\D/g,
@@ -490,7 +478,7 @@ export default function PlanosPage() {
         </div>
       </header>
 
-      {/* Imagens do app — para o cliente confirmar que é o app certo */}
+      {/* Vídeo do app — para o cliente confirmar que é o app certo */}
       <section
         id="app"
         className="mx-auto w-full max-w-6xl px-6 pt-16 pb-4 text-center"
@@ -499,22 +487,20 @@ export default function PlanosPage() {
           Conheça o app <span className="text-brand-blue">xciptv</span>
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600">
-          Confira o app antes de comprar e garanta que é exatamente o que você
-          procura.
+          Veja o app funcionando antes de comprar e garanta que é exatamente o
+          que você procura.
         </p>
-        <div className="mt-10 flex flex-wrap justify-center gap-6">
-          {appScreens.map((screen) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={screen.src}
-              src={screen.src}
-              alt={screen.alt}
-              width={screen.width}
-              height={screen.height}
-              loading="lazy"
-              className="h-auto w-full max-w-2xl rounded-2xl border border-zinc-200 shadow-md"
+        <div className="mx-auto mt-10 w-full max-w-3xl">
+          <div className="relative aspect-video overflow-hidden rounded-2xl border border-zinc-200 shadow-md">
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/9reoiOwB6EI"
+              title="Conheça o app xciptv"
+              className="absolute inset-0 h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
             />
-          ))}
+          </div>
         </div>
       </section>
 
