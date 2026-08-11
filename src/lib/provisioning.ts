@@ -3,6 +3,7 @@ import { getPackage, priceReais } from "@/lib/packages";
 import { getTransaction } from "@/lib/fastdepix";
 import { createCustomer } from "@/lib/sigma";
 import { sendAccessEmail } from "@/lib/email";
+import { sendOutboundEvent } from "@/lib/webhook";
 import {
   getPurchase,
   claimProvision,
@@ -104,6 +105,17 @@ export async function provisionPurchase(
       console.error("Erro ao enviar e-mail de acesso:", err);
     }
   }
+
+  // Dispara o webhook de saída (venda concluída) — não bloqueia.
+  await sendOutboundEvent("sale.completed", {
+    transaction_id: transactionId,
+    email: purchase.email,
+    phone: purchase.phone,
+    package: purchase.packageLabel,
+    package_id: purchase.packageId,
+    amount: purchase.amount,
+    username,
+  });
 
   return { ok: true, username, password };
 }

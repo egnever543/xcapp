@@ -26,3 +26,22 @@ export async function loadSettings(): Promise<SiteSettings> {
     conversionLabel: stored.google_conversion_label || "",
   };
 }
+
+// Webhook de saída (server-only — NÃO expor publicamente o segredo).
+export async function getOutboundWebhook(): Promise<{
+  url: string;
+  secret: string;
+}> {
+  let stored: Record<string, string> = {};
+  if (hasDb()) {
+    try {
+      stored = await getSettings();
+    } catch {
+      stored = {};
+    }
+  }
+  return {
+    url: stored.outbound_webhook_url || "",
+    secret: stored.outbound_webhook_secret || "",
+  };
+}

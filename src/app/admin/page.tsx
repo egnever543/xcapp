@@ -1,7 +1,8 @@
 import { listPurchases, hasDb, type Purchase } from "@/lib/db";
-import { loadSettings } from "@/lib/settings";
+import { loadSettings, getOutboundWebhook } from "@/lib/settings";
 import { ResendEmailButton } from "./resend-button";
 import { SettingsForm } from "./settings-form";
+import { WebhookForm } from "./webhook-form";
 import { AdminTheme } from "./admin-theme";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,7 @@ export default async function AdminPage({
   }
 
   const settings = await loadSettings();
+  const webhook = await getOutboundWebhook();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const cards = [
     { label: "Recebido (pago)", value: brl(paidAmount) },
@@ -108,6 +110,9 @@ export default async function AdminPage({
           googleAdsId={settings.googleAdsId}
           conversionLabel={settings.conversionLabel}
         />
+
+        {/* Webhook de eventos */}
+        <WebhookForm url={webhook.url} hasSecret={!!webhook.secret} />
 
         {/* Filtro */}
         <form
