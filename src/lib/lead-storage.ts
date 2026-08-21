@@ -15,18 +15,22 @@ export type StoredLead = {
 
 type StoredLeadWithExpiry = StoredLead & { expiresAt: number };
 
-const KEY = "xciptv_lead";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
+// Chave do localStorage por app (não mistura dados entre apps).
+function keyFor(app: string): string {
+  return `${app}_lead`;
+}
+
 // Salva o lead com prazo de expiração de 7 dias a partir de agora.
-export function saveLead(lead: StoredLead) {
+export function saveLead(app: string, lead: StoredLead) {
   if (typeof window === "undefined") return;
   const data: StoredLeadWithExpiry = {
     ...lead,
     expiresAt: Date.now() + MAX_AGE_MS,
   };
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(data));
+    window.localStorage.setItem(keyFor(app), JSON.stringify(data));
   } catch {
     // Ignora falhas (ex.: storage cheio ou bloqueado).
   }
@@ -34,10 +38,10 @@ export function saveLead(lead: StoredLead) {
 
 // Lê o lead salvo. Se estiver expirado (mais de 7 dias) ou inválido,
 // remove e retorna null.
-export function getLead(): StoredLead | null {
+export function getLead(app: string): StoredLead | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(keyFor(app));
     if (!raw) return null;
 
     const data = JSON.parse(raw) as StoredLeadWithExpiry;
@@ -47,7 +51,7 @@ export function getLead(): StoredLead | null {
       Date.now() > data.expiresAt;
 
     if (expired || !data.email || !data.phone) {
-      window.localStorage.removeItem(KEY);
+      window.localStorage.removeItem(keyFor(app));
       return null;
     }
 
@@ -66,10 +70,10 @@ export function getLead(): StoredLead | null {
 }
 
 // Remove os dados salvos.
-export function clearLead() {
+export function clearLead(app: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(keyFor(app));
   } catch {
     // Ignora.
   }

@@ -1,8 +1,15 @@
-import { listPurchases, hasDb, type Purchase } from "@/lib/db";
+import {
+  listPurchases,
+  listApps,
+  hasDb,
+  type Purchase,
+  type AppConfig,
+} from "@/lib/db";
 import { loadSettings, getOutboundWebhook } from "@/lib/settings";
 import { ResendEmailButton } from "./resend-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
+import { AppsManager } from "./apps-manager";
 import { AdminTheme } from "./admin-theme";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +77,14 @@ export default async function AdminPage({
 
   const settings = await loadSettings();
   const webhook = await getOutboundWebhook();
+  let apps: AppConfig[] = [];
+  if (hasDb()) {
+    try {
+      apps = await listApps(false);
+    } catch {
+      apps = [];
+    }
+  }
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const cards = [
     { label: "Recebido (pago)", value: brl(paidAmount) },
@@ -113,6 +128,9 @@ export default async function AdminPage({
 
         {/* Webhook de eventos */}
         <WebhookForm url={webhook.url} hasSecret={!!webhook.secret} />
+
+        {/* Gestão de apps (multi-tenant) */}
+        <AppsManager apps={apps} />
 
         {/* Filtro */}
         <form

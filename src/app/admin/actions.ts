@@ -2,9 +2,16 @@
 
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
-import { getPurchase, setSetting } from "@/lib/db";
+import {
+  getPurchase,
+  setSetting,
+  getApp,
+  upsertApp,
+  deleteApp,
+} from "@/lib/db";
 import { sendAccessEmail } from "@/lib/email";
 import { getOutboundWebhook } from "@/lib/settings";
+import { normalizeHex } from "@/lib/color";
 
 export type SettingsState = { ok?: boolean; error?: string };
 
@@ -91,14 +98,89 @@ export async function resendEmail(
   if (!purchase.username || !purchase.password) {
     return { ok: false, error: "Acesso ainda não gerado (não pago?)." };
   }
+  const app = purchase.app ? await getApp(purchase.app) : null;
   try {
     await sendAccessEmail({
       email: purchase.email,
       username: purchase.username,
       password: purchase.password,
+      appName: app?.name,
+      accessUrl: app?.accessUrl || undefined,
+      color: app?.color,
+      intro: app?.emailIntro || undefined,
     });
     return { ok: true };
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Falha ao enviar." };
+  }
+}
+
+// ---- Gestão de apps (multi-tenant) ----
+
+export type AppFormState = { ok?: boolean; error?: string };
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// Cria ou atualiza um app a partir do formulário do painel.
+export async function saveApp(
+  _prev: AppFormState,
+  formData: FormData,
+): Promise<AppFormState> {
+  const slug = String(formData.get("slug") ?? "")
+    .trim()
+    .toLowerCase();
+  const name = String(formData.get("name") ?? "").trim();
+  const color = normalizeHex(String(formData.get("color") ?? ""));
+  const logoUrl = String(formData.get("logo_url") ?? "").trim();
+  const accessUrl = String(formData.get("access_url") ?? "").trim();
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim();
+  const videoId = String(formData.get("video_id") ?? "").trim();
+  const emailIntro = String(formData.get("email_intro") ?? "").trim();
+  const active = formData.get("active") != null;
+
+  if (!slug || !SLUG_RE.test(slug)) {
+    return {
+      error: "Slug inválido. Use apenas letras minúsculas, números e hífen.",
+    };
+  }
+  if (slug === "admin" || slug === "api" || slug === "planos") {
+    return { error: "Este slug é reservado." };
+  }
+  if (!name) {
+    return { error: "Informe o nome do app." };
+  }
+
+  try {
+    await upsertApp({
+      slug,
+      name,
+      color,
+      logoUrl,
+      accessUrl,
+      whatsapp,
+      videoId,
+      emailIntro,
+      active,
+    });
+    revalidatePath("/admin");
+    revalidatePath("/", "layout");
+    revalidatePath(`/${slug}`);
+    return { ok: true };
+  } catch (err) {
+    return { error: (err as Error).message ?? "Falha ao salvar o app." };
+  }
+}
+
+// Remove um app pelo slug.
+export async function removeApp(
+  slug: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await deleteApp(slug);
+    revalidatePath("/admin");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message ?? "Falha ao remover." };
   }
 }

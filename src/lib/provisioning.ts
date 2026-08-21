@@ -6,6 +6,7 @@ import { sendAccessEmail } from "@/lib/email";
 import { sendOutboundEvent } from "@/lib/webhook";
 import {
   getPurchase,
+  getApp,
   claimProvision,
   releaseProvision,
   saveCredentials,
@@ -97,10 +98,21 @@ export async function provisionPurchase(
 
   await saveCredentials(transactionId, username, password);
 
+  // Carrega a config do app da compra (marca/URL/cor/intro do e-mail).
+  const app = purchase.app ? await getApp(purchase.app) : null;
+
   // Envia as credenciais por e-mail (não bloqueia se falhar).
   if (purchase.email) {
     try {
-      await sendAccessEmail({ email: purchase.email, username, password });
+      await sendAccessEmail({
+        email: purchase.email,
+        username,
+        password,
+        appName: app?.name,
+        accessUrl: app?.accessUrl || undefined,
+        color: app?.color,
+        intro: app?.emailIntro || undefined,
+      });
     } catch (err) {
       console.error("Erro ao enviar e-mail de acesso:", err);
     }
@@ -109,6 +121,7 @@ export async function provisionPurchase(
   // Dispara o webhook de saída (venda concluída) — não bloqueia.
   await sendOutboundEvent("sale.completed", {
     transaction_id: transactionId,
+    app: purchase.app,
     email: purchase.email,
     phone: purchase.phone,
     package: purchase.packageLabel,

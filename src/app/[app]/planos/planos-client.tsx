@@ -8,24 +8,9 @@ import {
   type Package,
 } from "@/lib/packages";
 import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
-import { WhatsAppButton } from "../whatsapp-button";
-
-// Número de WhatsApp para compra (só dígitos, com DDI). Configurável por env var.
-const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(
-  /\D/g,
-  "",
-);
-const whatsappHref = whatsappNumber
-  ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      "Olá! Quero comprar o xciptv.",
-    )}`
-  : null;
-// Link de suporte (usado na tela de compra confirmada).
-const whatsappSupportHref = whatsappNumber
-  ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      "Olá! Comprei o xciptv mas não recebi os dados de acesso por e-mail.",
-    )}`
-  : null;
+import { darken } from "@/lib/color";
+import type { AppConfig } from "@/lib/db";
+import { WhatsAppButton } from "../../whatsapp-button";
 
 // Perguntas frequentes exibidas na página de compra.
 const faq: { q: string; a: string }[] = [
@@ -93,8 +78,15 @@ function diasRestantes(expDate: number): string {
   return `${dias} dias restantes`;
 }
 
-export default function PlanosPage() {
+export function PlanosClient({ app }: { app: AppConfig }) {
   const router = useRouter();
+  // Contatos de WhatsApp derivados da config do app (venda e suporte usam o
+  // mesmo número; vazio quando o app não define um número).
+  const whatsappNumber = (app.whatsapp ?? "").replace(/\D/g, "");
+  const whatsappHref = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}`
+    : "";
+  const whatsappSupportHref = whatsappHref;
   const [lead, setLead] = useState<StoredLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [venc, setVenc] = useState<Vencimento | null>(null);
@@ -120,14 +112,14 @@ export default function PlanosPage() {
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
   useEffect(() => {
-    const stored = getLead();
+    const stored = getLead(app.slug);
     if (!stored) {
-      router.replace("/");
+      router.replace(`/${app.slug}`);
       return;
     }
     setLead(stored);
     setLoading(false);
-  }, [router]);
+  }, [router, app.slug]);
 
   // Consulta o status/vencimento no Xtream (via rota do servidor) usando as
   // credenciais salvas. Faz polling a cada 15s enquanto ainda for trial, para
@@ -147,6 +139,7 @@ export default function PlanosPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          app: app.slug,
           email: lead.email,
           username: lead.username,
           password: lead.password,
@@ -188,7 +181,7 @@ export default function PlanosPage() {
 
           // Persiste status/flag de e-mail no localStorage.
           if (d.isTrial !== lead.isTrial || notified !== lead.notified) {
-            saveLead({ ...lead, isTrial: d.isTrial, notified });
+            saveLead(app.slug, { ...lead, isTrial: d.isTrial, notified });
           }
           return d.isTrial;
         }
@@ -225,7 +218,7 @@ export default function PlanosPage() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [lead]);
+  }, [lead, app.slug]);
 
   // Polling do status da cobrança PIX até confirmar o pagamento.
   useEffect(() => {
@@ -248,6 +241,7 @@ export default function PlanosPage() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                app: app.slug,
                 transactionId: pix.id,
                 packageId: pix.packageId,
                 email: lead?.email,
@@ -263,7 +257,7 @@ export default function PlanosPage() {
                 username: pd.username,
                 password: pd.password,
               };
-              saveLead(atualizado);
+              saveLead(app.slug, atualizado);
               if (ativo) setLead(atualizado);
             }
           } catch {
@@ -281,7 +275,7 @@ export default function PlanosPage() {
       ativo = false;
       clearInterval(id);
     };
-  }, [pix, pixPaid, lead]);
+  }, [pix, pixPaid, lead, app.slug]);
 
   // Carrega a config de marketing (Google Ads) uma vez.
   useEffect(() => {
@@ -326,6 +320,7 @@ export default function PlanosPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          app: app.slug,
           packageId: pkg.id,
           phone: lead?.phone,
           email: lead?.email,
@@ -360,12 +355,28 @@ export default function PlanosPage() {
   // confirmada, sem os planos.
   if (isTrialEffective === false || pixPaid) {
     return (
-      <div className="flex flex-1 flex-col bg-white text-brand-black">
+      <div
+        style={
+          {
+            "--brand-blue": app.color,
+            "--brand-blue-dark": darken(app.color),
+          } as React.CSSProperties
+        }
+        className="flex flex-1 flex-col bg-white text-brand-black"
+      >
         {/* Cabeçalho */}
         <header className="border-b border-zinc-200 bg-brand-black text-white">
           <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-            <span className="text-lg font-semibold tracking-tight">
-              xc<span className="text-brand-blue">iptv</span>
+            <span className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              {app.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={app.logoUrl}
+                  alt={`Logo ${app.name}`}
+                  className="h-7 w-7 rounded-md object-contain"
+                />
+              )}
+              {app.name}
             </span>
             <span className="text-sm text-zinc-300">{lead.email}</span>
           </div>
@@ -461,7 +472,8 @@ export default function PlanosPage() {
         {/* Rodapé */}
         <footer className="mt-auto border-t border-zinc-200 py-8">
           <div className="mx-auto w-full max-w-6xl px-6 text-center text-sm text-zinc-500">
-            © {new Date().getFullYear()} xciptv. Todos os direitos reservados.
+            © {new Date().getFullYear()} {app.name}. Todos os direitos
+            reservados.
           </div>
         </footer>
       </div>
@@ -469,22 +481,41 @@ export default function PlanosPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-white text-brand-black">
+    <div
+      style={
+        {
+          "--brand-blue": app.color,
+          "--brand-blue-dark": darken(app.color),
+        } as React.CSSProperties
+      }
+      className="flex flex-1 flex-col bg-white text-brand-black"
+    >
       {/* Cabeçalho */}
       <header className="border-b border-zinc-200 bg-brand-black text-white">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <span className="text-lg font-semibold tracking-tight">xc<span className="text-brand-blue">iptv</span></span>
+          <span className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            {app.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={app.logoUrl}
+                alt={`Logo ${app.name}`}
+                className="h-7 w-7 rounded-md object-contain"
+              />
+            )}
+            {app.name}
+          </span>
           <span className="text-sm text-zinc-300">{lead.email}</span>
         </div>
       </header>
 
       {/* Vídeo do app — para o cliente confirmar que é o app certo */}
+      {app.videoId && (
       <section
         id="app"
         className="mx-auto w-full max-w-6xl px-6 pt-16 pb-4 text-center"
       >
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Conheça o app <span className="text-brand-blue">xciptv</span>
+          Conheça o app <span className="text-brand-blue">{app.name}</span>
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600">
           Veja o app funcionando antes de comprar e garanta que é exatamente o
@@ -493,8 +524,8 @@ export default function PlanosPage() {
         <div className="mx-auto mt-10 w-full max-w-3xl">
           <div className="relative aspect-video overflow-hidden rounded-2xl border border-zinc-200 shadow-md">
             <iframe
-              src="https://www.youtube-nocookie.com/embed/9reoiOwB6EI"
-              title="Conheça o app xciptv"
+              src={`https://www.youtube-nocookie.com/embed/${app.videoId}`}
+              title={`Conheça o app ${app.name}`}
               className="absolute inset-0 h-full w-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -503,6 +534,7 @@ export default function PlanosPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Planos */}
       <section id="planos" className="mx-auto w-full max-w-6xl px-6 pt-8 pb-16">
@@ -832,7 +864,8 @@ export default function PlanosPage() {
       {/* Rodapé */}
       <footer className="mt-auto border-t border-zinc-200 py-8">
         <div className="mx-auto w-full max-w-6xl px-6 text-center text-sm text-zinc-500">
-          © {new Date().getFullYear()} xciptv. Todos os direitos reservados.
+          © {new Date().getFullYear()} {app.name}. Todos os direitos
+          reservados.
         </div>
       </footer>
     </div>
