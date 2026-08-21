@@ -10,6 +10,7 @@ import { ResendEmailButton } from "./resend-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { AppsManager } from "./apps-manager";
+import { AutoRefresh } from "./auto-refresh";
 import { AdminTheme } from "./admin-theme";
 
 export const dynamic = "force-dynamic";
@@ -132,10 +133,15 @@ export default async function AdminPage({
         {/* Gestão de apps (multi-tenant) */}
         <AppsManager apps={apps} />
 
+        {/* Histórico de vendas — atualização automática */}
+        <div className="mt-8">
+          <AutoRefresh />
+        </div>
+
         {/* Filtro */}
         <form
           method="get"
-          className="mt-8 flex flex-wrap items-end gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700"
+          className="flex flex-wrap items-end gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700"
         >
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-zinc-600 dark:text-zinc-300">Status</span>
