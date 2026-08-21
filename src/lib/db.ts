@@ -351,6 +351,13 @@ function ensureAppsSchema(): Promise<void> {
         SELECT 'xciptv', 'xciptv', '#1477e1', '/logo.png', '9reoiOwB6EI'
         WHERE NOT EXISTS (SELECT 1 FROM apps)
       `;
+      // Semeia o app funplays (idempotente): só cria se ainda não existir,
+      // sem sobrescrever edições feitas depois pelo painel.
+      await sql`
+        INSERT INTO apps (slug, name, color, logo_url)
+        SELECT 'funplays', 'FunPlays', '#1477e1', 'https://funplaysapp.com/logo.png'
+        WHERE NOT EXISTS (SELECT 1 FROM apps WHERE slug = 'funplays')
+      `;
     })();
   }
   return appsSchemaReady;
