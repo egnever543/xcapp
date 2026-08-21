@@ -8,11 +8,13 @@ export async function POST(request: Request) {
   let packageId = "";
   let phone = "";
   let email = "";
+  let app = "";
   try {
     const body = await request.json();
     packageId = String(body?.packageId ?? "");
     phone = String(body?.phone ?? "");
     email = String(body?.email ?? "");
+    app = String(body?.app ?? "");
   } catch {
     // corpo inválido
   }
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
           packageId: pkg.id,
           packageLabel: `${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`,
           amount: priceReais(pkg.priceCents),
+          app: app || undefined,
         });
       } catch (err) {
         console.error("Erro ao registrar a compra:", err);

@@ -15,23 +15,37 @@ function escapeHtml(value: string): string {
 }
 
 // Envia o e-mail com URL, login e senha. Lança erro se o envio falhar.
+// Cada app pode definir o nome exibido, a URL/servidor de acesso, a cor do
+// cabeçalho e um texto de introdução personalizado. Sem esses parâmetros,
+// recai nos padrões (útil para o teste de reenvio no painel).
 export async function sendAccessEmail(params: {
   email: string;
   username: string;
   password: string;
+  appName?: string;
+  accessUrl?: string;
+  color?: string;
+  intro?: string;
 }): Promise<void> {
   if (!RESEND_API_KEY || !EMAIL_FROM) {
     throw new Error("E-mail não configurado (RESEND_API_KEY/EMAIL_FROM).");
   }
 
+  const appName = params.appName?.trim() || "xciptv";
+  const accessUrl = params.accessUrl?.trim() || ACCESS_URL;
+  const color = params.color?.trim() || "#1477e1";
+  const intro =
+    params.intro?.trim() ||
+    "Sua compra foi confirmada! Use os dados abaixo para acessar no app:";
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
-      <h2 style="color: #1477e1;">Seus dados de acesso — xciptv</h2>
-      <p>Sua compra foi confirmada! Use os dados abaixo para acessar no app:</p>
+      <h2 style="color: ${escapeHtml(color)};">Seus dados de acesso — ${escapeHtml(appName)}</h2>
+      <p>${escapeHtml(intro)}</p>
       <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
         <tr>
           <td style="padding: 8px; border: 1px solid #e5e5e5; font-weight: bold;">URL / Servidor</td>
-          <td style="padding: 8px; border: 1px solid #e5e5e5;">${escapeHtml(ACCESS_URL)}</td>
+          <td style="padding: 8px; border: 1px solid #e5e5e5;">${escapeHtml(accessUrl)}</td>
         </tr>
         <tr>
           <td style="padding: 8px; border: 1px solid #e5e5e5; font-weight: bold;">Usuário</td>
@@ -57,7 +71,7 @@ export async function sendAccessEmail(params: {
     body: JSON.stringify({
       from: EMAIL_FROM,
       to: params.email,
-      subject: "Seus dados de acesso — xciptv",
+      subject: `Seus dados de acesso — ${appName}`,
       html,
     }),
   });

@@ -41,6 +41,8 @@ function ensureSchema(): Promise<void> {
           updated_at TIMESTAMPTZ DEFAULT now()
         )
       `;
+      // Coluna do app (multi-tenant) — adicionada se ainda não existir.
+      await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS app TEXT`;
     })();
   }
   return schemaReady;
@@ -89,6 +91,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export type Purchase = {
   transactionId: string;
+  app: string | null;
   email: string | null;
   phone: string | null;
   packageId: string | null;
@@ -103,6 +106,7 @@ export type Purchase = {
 
 type Row = {
   transaction_id: string;
+  app: string | null;
   email: string | null;
   phone: string | null;
   package_id: string | null;
@@ -118,6 +122,7 @@ type Row = {
 function mapRow(r: Row): Purchase {
   return {
     transactionId: r.transaction_id,
+    app: r.app ?? null,
     email: r.email,
     phone: r.phone,
     packageId: r.package_id,
@@ -134,6 +139,7 @@ function mapRow(r: Row): Purchase {
 // Registra a compra no momento da criação da cobrança PIX.
 export async function savePurchaseInit(p: {
   transactionId: string;
+  app?: string;
   email?: string;
   phone?: string;
   packageId: string;
@@ -143,10 +149,11 @@ export async function savePurchaseInit(p: {
   await ensureSchema();
   const sql = db();
   await sql`
-    INSERT INTO purchases (transaction_id, email, phone, package_id, package_label, amount, status)
-    VALUES (${p.transactionId}, ${p.email ?? null}, ${p.phone ?? null}, ${p.packageId}, ${p.packageLabel}, ${p.amount}, 'pending')
+    INSERT INTO purchases (transaction_id, app, email, phone, package_id, package_label, amount, status)
+    VALUES (${p.transactionId}, ${p.app ?? null}, ${p.email ?? null}, ${p.phone ?? null}, ${p.packageId}, ${p.packageLabel}, ${p.amount}, 'pending')
     ON CONFLICT (transaction_id) DO UPDATE
-      SET email = EXCLUDED.email,
+      SET app = EXCLUDED.app,
+          email = EXCLUDED.email,
           phone = EXCLUDED.phone,
           package_id = EXCLUDED.package_id,
           package_label = EXCLUDED.package_label,
@@ -276,4 +283,130 @@ export async function listPurchases(params: {
       paidAmount: Number(s.paid_amount),
     },
   };
+}
+
+// ===== Apps (multi-tenant) =====
+
+export type AppRow = {
+  slug: string;
+  name: string;
+  color: string;
+  logo_url: string | null;
+  access_url: string | null;
+  whatsapp: string | null;
+  video_id: string | null;
+  email_intro: string | null;
+  active: boolean;
+};
+
+export type AppConfig = {
+  slug: string;
+  name: string;
+  color: string;
+  logoUrl: string;
+  accessUrl: string;
+  whatsapp: string;
+  videoId: string;
+  emailIntro: string;
+  active: boolean;
+};
+
+function mapApp(r: AppRow): AppConfig {
+  return {
+    slug: r.slug,
+    name: r.name,
+    color: r.color || "#1477e1",
+    logoUrl: r.logo_url ?? "",
+    accessUrl: r.access_url ?? "",
+    whatsapp: r.whatsapp ?? "",
+    videoId: r.video_id ?? "",
+    emailIntro: r.email_intro ?? "",
+    active: r.active,
+  };
+}
+
+let appsSchemaReady: Promise<void> | null = null;
+function ensureAppsSchema(): Promise<void> {
+  if (!appsSchemaReady) {
+    const sql = db();
+    appsSchemaReady = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS apps (
+          slug TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          color TEXT DEFAULT '#1477e1',
+          logo_url TEXT,
+          access_url TEXT,
+          whatsapp TEXT,
+          video_id TEXT,
+          email_intro TEXT,
+          active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ DEFAULT now()
+        )
+      `;
+      // Semeia o app xciptv na primeira vez (tabela vazia).
+      await sql`
+        INSERT INTO apps (slug, name, color, logo_url, video_id)
+        SELECT 'xciptv', 'xciptv', '#1477e1', '/logo.png', '9reoiOwB6EI'
+        WHERE NOT EXISTS (SELECT 1 FROM apps)
+      `;
+    })();
+  }
+  return appsSchemaReady;
+}
+
+export async function listApps(activeOnly = false): Promise<AppConfig[]> {
+  await ensureAppsSchema();
+  const sql = db();
+  const rows = (
+    activeOnly
+      ? ((await sql`SELECT * FROM apps WHERE active = TRUE ORDER BY created_at`) as AppRow[])
+      : ((await sql`SELECT * FROM apps ORDER BY created_at`) as AppRow[])
+  ).map(mapApp);
+  return rows;
+}
+
+export async function getApp(slug: string): Promise<AppConfig | null> {
+  await ensureAppsSchema();
+  const sql = db();
+  const rows = (await sql`
+    SELECT * FROM apps WHERE slug = ${slug} LIMIT 1
+  `) as AppRow[];
+  return rows[0] ? mapApp(rows[0]) : null;
+}
+
+export async function upsertApp(a: {
+  slug: string;
+  name: string;
+  color: string;
+  logoUrl?: string;
+  accessUrl?: string;
+  whatsapp?: string;
+  videoId?: string;
+  emailIntro?: string;
+  active: boolean;
+}): Promise<void> {
+  await ensureAppsSchema();
+  const sql = db();
+  await sql`
+    INSERT INTO apps (slug, name, color, logo_url, access_url, whatsapp, video_id, email_intro, active, updated_at)
+    VALUES (${a.slug}, ${a.name}, ${a.color}, ${a.logoUrl ?? null}, ${a.accessUrl ?? null}, ${a.whatsapp ?? null}, ${a.videoId ?? null}, ${a.emailIntro ?? null}, ${a.active}, now())
+    ON CONFLICT (slug) DO UPDATE
+      SET name = EXCLUDED.name,
+          color = EXCLUDED.color,
+          logo_url = EXCLUDED.logo_url,
+          access_url = EXCLUDED.access_url,
+          whatsapp = EXCLUDED.whatsapp,
+          video_id = EXCLUDED.video_id,
+          email_intro = EXCLUDED.email_intro,
+          active = EXCLUDED.active,
+          updated_at = now()
+  `;
+}
+
+export async function deleteApp(slug: string): Promise<void> {
+  await ensureAppsSchema();
+  const sql = db();
+  await sql`DELETE FROM apps WHERE slug = ${slug}`;
 }
