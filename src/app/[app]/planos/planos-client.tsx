@@ -536,6 +536,50 @@ export function PlanosClient({ app }: { app: AppConfig }) {
       </section>
       )}
 
+      {/* Conteúdo — canais e streamings inclusos */}
+      <section className="mx-auto w-full max-w-3xl px-6 pt-6 pb-4 text-center">
+        <p className="text-base text-zinc-700">
+          Tenha <span className="font-semibold text-brand-black">todos os
+          canais</span> em um só lugar — abertos e fechados, como{" "}
+          <span className="font-medium text-brand-black">Premiere</span> (todo o
+          Brasileirão),{" "}
+          <span className="font-medium text-brand-black">Globo</span>,{" "}
+          <span className="font-medium text-brand-black">SporTV</span>,{" "}
+          <span className="font-medium text-brand-black">ESPN</span> e{" "}
+          <span className="font-medium text-brand-black">Telecine</span> — além
+          de <span className="font-semibold text-brand-black">todos os
+          streamings</span>, como{" "}
+          <span className="font-medium text-brand-black">Netflix</span>,{" "}
+          <span className="font-medium text-brand-black">Prime Video</span>,{" "}
+          <span className="font-medium text-brand-black">Disney+</span>,{" "}
+          <span className="font-medium text-brand-black">Max</span> e{" "}
+          <span className="font-medium text-brand-black">Paramount+</span>, com
+          filmes e séries sempre atualizados.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {[
+            "Premiere",
+            "Globo",
+            "SporTV",
+            "ESPN",
+            "Telecine",
+            "Netflix",
+            "Prime Video",
+            "Disney+",
+            "Max",
+            "Paramount+",
+            "+ milhares de canais",
+          ].map((nome) => (
+            <span
+              key={nome}
+              className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700"
+            >
+              {nome}
+            </span>
+          ))}
+        </div>
+      </section>
+
       {/* Planos */}
       <section id="planos" className="mx-auto w-full max-w-6xl px-6 pt-8 pb-16">
         <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
