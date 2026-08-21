@@ -11,6 +11,7 @@ import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { AppsManager } from "./apps-manager";
 import { AutoRefresh } from "./auto-refresh";
+import { SalesNotifier } from "./sales-notifier";
 import { AdminTheme } from "./admin-theme";
 
 export const dynamic = "force-dynamic";
@@ -133,9 +134,18 @@ export default async function AdminPage({
         {/* Gestão de apps (multi-tenant) */}
         <AppsManager apps={apps} />
 
-        {/* Histórico de vendas — atualização automática */}
-        <div className="mt-8">
+        {/* Histórico de vendas — atualização automática + alertas */}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           <AutoRefresh />
+          <SalesNotifier
+            items={items.map((p) => ({
+              transactionId: p.transactionId,
+              email: p.email,
+              amount: p.amount,
+              status: p.status,
+              createdAt: p.createdAt,
+            }))}
+          />
         </div>
 
         {/* Filtro */}
