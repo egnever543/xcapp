@@ -37,7 +37,7 @@ export function AutoRefresh() {
       </span>
       {last && (
         <span className="text-xs text-zinc-400">
-          última: {last.toLocaleTimeString("pt-BR")}
+          última: {last.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}
         </span>
       )}
       <button

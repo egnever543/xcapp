@@ -449,7 +449,7 @@ export function PlanosClient({ app }: { app: AppConfig }) {
                   <>
                     Sua licença vence em{" "}
                     <span className="font-medium text-brand-black">
-                      {new Date(venc.expDate * 1000).toLocaleDateString("pt-BR")}
+                      {new Date(venc.expDate * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                     </span>{" "}
                     ({diasRestantes(venc.expDate)}).
                   </>

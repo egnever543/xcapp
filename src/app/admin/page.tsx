@@ -27,7 +27,8 @@ function formatDate(value: string | null): string {
   if (!value) return "—";
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
-  return d.toLocaleString("pt-BR");
+  // Formata sempre no horário de Brasília (o servidor roda em UTC).
+  return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
 const STATUS_STYLES: Record<string, string> = {
