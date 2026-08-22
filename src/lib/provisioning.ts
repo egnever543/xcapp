@@ -10,6 +10,8 @@ import {
   claimProvision,
   releaseProvision,
   saveCredentials,
+  markPaid,
+  setProvisionError,
 } from "@/lib/db";
 
 function genUsername(): string {
@@ -58,8 +60,15 @@ export async function provisionPurchase(
   if (tx.status !== "paid" && tx.status !== "approved") {
     return { ok: false, status: 402, error: "Pagamento ainda não confirmado." };
   }
+
+  // Pagamento confirmado: marca como pago já (o dinheiro entrou), mesmo que a
+  // criação da conta abaixo venha a falhar — assim nunca fica como "pendente".
+  await markPaid(transactionId);
+
   if (Math.abs(Number(tx.amount) - priceReais(pkg.priceCents)) > 0.01) {
-    return { ok: false, status: 400, error: "Valor pago não corresponde ao pacote." };
+    const msg = `Valor pago (R$ ${Number(tx.amount).toFixed(2)}) não corresponde ao pacote (R$ ${priceReais(pkg.priceCents).toFixed(2)}).`;
+    await setProvisionError(transactionId, msg);
+    return { ok: false, status: 400, error: msg };
   }
 
   // Reivindica o provisionamento (só um chamador cria a conta).
@@ -87,13 +96,12 @@ export async function provisionPurchase(
       connections: pkg.telas,
     });
   } catch (err) {
-    // Falhou: libera a trava para permitir nova tentativa.
+    // Falhou: libera a trava para permitir nova tentativa e registra o erro
+    // para o painel exibir (o pagamento já está marcado como pago).
     await releaseProvision(transactionId);
-    return {
-      ok: false,
-      status: 502,
-      error: (err as Error).message ?? "Falha ao criar o acesso.",
-    };
+    const msg = (err as Error).message ?? "Falha ao criar o acesso.";
+    await setProvisionError(transactionId, msg);
+    return { ok: false, status: 502, error: msg };
   }
 
   await saveCredentials(transactionId, username, password);

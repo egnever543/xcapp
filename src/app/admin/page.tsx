@@ -7,6 +7,7 @@ import {
 } from "@/lib/db";
 import { loadSettings, getOutboundWebhook } from "@/lib/settings";
 import { ResendEmailButton } from "./resend-button";
+import { ProvisionButton } from "./provision-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { AppsManager } from "./apps-manager";
@@ -222,12 +223,34 @@ export default async function AdminPage({
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{p.username ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <ResendEmailButton
-                        transactionId={p.transactionId}
-                        disabled={!p.email || !p.username}
-                      />
+                      {p.username ?? "—"}
+                      {!p.provisioned &&
+                        (p.status === "paid" || p.status === "approved") && (
+                          <span
+                            title={p.provisionError ?? undefined}
+                            className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
+                          >
+                            ⚠ acesso não criado
+                          </span>
+                        )}
+                      {p.provisionError && (
+                        <span className="mt-1 block max-w-[260px] text-[11px] leading-tight text-red-600">
+                          {p.provisionError}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        {!p.provisioned &&
+                          (p.status === "paid" || p.status === "approved") && (
+                            <ProvisionButton transactionId={p.transactionId} />
+                          )}
+                        <ResendEmailButton
+                          transactionId={p.transactionId}
+                          disabled={!p.email || !p.username}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

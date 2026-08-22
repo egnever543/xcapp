@@ -24,15 +24,23 @@ export async function POST(request: Request) {
     }
   }
 
-  let data: { transaction_id?: number | string; status?: string } = {};
+  let data: Record<string, unknown> = {};
   try {
     data = JSON.parse(raw);
   } catch {
     // payload não-JSON
   }
 
-  const transactionId = data.transaction_id ? String(data.transaction_id) : "";
-  const status = data.status ?? "";
+  // A FastDePix pode enviar o id/status no topo ou aninhados em "data"/
+  // "transaction". Tenta as variações mais comuns.
+  const nested = (data.data ?? data.transaction ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const rawId =
+    data.transaction_id ?? data.id ?? nested.id ?? nested.transaction_id ?? "";
+  const transactionId = rawId ? String(rawId) : "";
+  const status = String(data.status ?? nested.status ?? "");
 
   if (transactionId) {
     try {
