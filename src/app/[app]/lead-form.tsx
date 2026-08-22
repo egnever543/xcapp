@@ -18,10 +18,6 @@ export function LeadForm({ appSlug }: { appSlug: string }) {
       saveLead(appSlug, {
         email: state.email,
         phone: state.phone,
-        payUrl: state.payUrl,
-        isTrial: state.isTrial,
-        username: state.username,
-        password: state.password,
       });
       router.push(`/${appSlug}/planos`);
     }
