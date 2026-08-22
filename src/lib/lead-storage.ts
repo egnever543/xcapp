@@ -5,12 +5,11 @@
 export type StoredLead = {
   email: string;
   phone: string;
-  payUrl?: string;
-  isTrial?: boolean;
+  // Preenchidos após a compra ser confirmada e a conta provisionada.
   username?: string;
   password?: string;
-  // true quando o e-mail com os dados de acesso já foi enviado (evita reenvio).
-  notified?: boolean;
+  // true quando a compra foi concluída (conta criada).
+  purchased?: boolean;
 };
 
 type StoredLeadWithExpiry = StoredLead & { expiresAt: number };
@@ -58,11 +57,9 @@ export function getLead(app: string): StoredLead | null {
     return {
       email: data.email,
       phone: data.phone,
-      payUrl: data.payUrl,
-      isTrial: data.isTrial,
       username: data.username,
       password: data.password,
-      notified: data.notified,
+      purchased: data.purchased,
     };
   } catch {
     return null;

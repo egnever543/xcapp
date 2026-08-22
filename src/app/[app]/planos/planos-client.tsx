@@ -56,11 +56,6 @@ const faq: { q: string; a: string }[] = [
   },
 ];
 
-type Vencimento = {
-  expDate: number | null; // timestamp Unix em segundos
-  status: string | null;
-};
-
 type PixData = {
   id: number;
   amount: number;
@@ -68,15 +63,6 @@ type PixData = {
   qrCodeText: string | null; // copia-e-cola
   packageId: string; // pacote escolhido (para o provisionamento)
 };
-
-// Texto de dias restantes a partir do timestamp de expiração (segundos).
-function diasRestantes(expDate: number): string {
-  const dias = Math.ceil((expDate * 1000 - Date.now()) / 86400000);
-  if (dias < 0) return "expirada";
-  if (dias === 0) return "vence hoje";
-  if (dias === 1) return "1 dia restante";
-  return `${dias} dias restantes`;
-}
 
 export function PlanosClient({ app }: { app: AppConfig }) {
   const router = useRouter();
@@ -89,9 +75,6 @@ export function PlanosClient({ app }: { app: AppConfig }) {
   const whatsappSupportHref = whatsappHref;
   const [lead, setLead] = useState<StoredLead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [venc, setVenc] = useState<Vencimento | null>(null);
-  // Status "ao vivo" consultado no Xtream (null = ainda não consultado).
-  const [liveIsTrial, setLiveIsTrial] = useState<boolean | null>(null);
   // Modal de pagamento PIX (FastDePix).
   const [payOpen, setPayOpen] = useState(false);
   const [pix, setPix] = useState<PixData | null>(null);
@@ -120,105 +103,6 @@ export function PlanosClient({ app }: { app: AppConfig }) {
     setLead(stored);
     setLoading(false);
   }, [router, app.slug]);
-
-  // Consulta o status/vencimento no Xtream (via rota do servidor) usando as
-  // credenciais salvas. Faz polling a cada 15s enquanto ainda for trial, para
-  // trocar a tela automaticamente quando o pagamento for confirmado.
-  useEffect(() => {
-    if (!lead?.username || !lead?.password) return;
-    let ativo = true;
-
-    // Estado anterior de trial e se o e-mail de acesso já foi enviado —
-    // usados para disparar o e-mail só na transição trial -> pago, uma vez.
-    let prevTrial: boolean | null = lead.isTrial ?? null;
-    let notified = lead.notified ?? false;
-
-    // Envia o e-mail com os dados de acesso (uma única vez).
-    const enviarEmailAcesso = () => {
-      fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          app: app.slug,
-          email: lead.email,
-          username: lead.username,
-          password: lead.password,
-        }),
-      }).catch(() => {
-        // Silencioso: se falhar, não trava a tela.
-      });
-    };
-
-    const check = async (): Promise<boolean | null> => {
-      try {
-        const r = await fetch("/api/xtream", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({
-            username: lead.username,
-            password: lead.password,
-          }),
-        });
-        const d = await r.json();
-        if (!ativo || d?.error) return null;
-
-        setVenc({
-          expDate: d.expDate != null ? Number(d.expDate) : null,
-          status: d.status ?? null,
-        });
-
-        if (typeof d.isTrial === "boolean") {
-          setLiveIsTrial(d.isTrial);
-
-          // Transição trial -> pago: dispara o e-mail com os dados de acesso.
-          const virouPago = prevTrial === true && d.isTrial === false;
-          if (virouPago && !notified) {
-            notified = true;
-            enviarEmailAcesso();
-          }
-          prevTrial = d.isTrial;
-
-          // Persiste status/flag de e-mail no localStorage.
-          if (d.isTrial !== lead.isTrial || notified !== lead.notified) {
-            saveLead(app.slug, { ...lead, isTrial: d.isTrial, notified });
-          }
-          return d.isTrial;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    };
-
-    // Consulta imediata ao carregar / dar F5 na página.
-    check();
-
-    // Polling a cada 15s enquanto ainda for trial.
-    const id = setInterval(async () => {
-      const t = await check();
-      // Já virou pago (não-trial): pode parar de consultar.
-      if (t === false) clearInterval(id);
-    }, 15000);
-
-    // Força uma atualização sempre que a aba volta ao foco / fica visível
-    // (ex.: cliente sai para pagar e retorna à página).
-    const onFocus = () => {
-      check();
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") check();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      ativo = false;
-      clearInterval(id);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [lead, app.slug]);
 
   // Polling do status da cobrança PIX até confirmar o pagamento.
   useEffect(() => {
@@ -252,8 +136,7 @@ export function PlanosClient({ app }: { app: AppConfig }) {
             if (pr.ok && pd?.username && lead) {
               const atualizado = {
                 ...lead,
-                isTrial: false,
-                notified: true,
+                purchased: true,
                 username: pd.username,
                 password: pd.password,
               };
@@ -347,13 +230,9 @@ export function PlanosClient({ app }: { app: AppConfig }) {
 
   if (loading || !lead) return null;
 
-  // Status efetivo: prioriza o consultado ao vivo no Xtream; se ainda não
-  // consultou, usa o que veio do chatbot/localStorage.
-  const isTrialEffective = liveIsTrial ?? lead.isTrial;
-
-  // Conta paga (não-trial) OU pagamento PIX confirmado: tela de compra
-  // confirmada, sem os planos.
-  if (isTrialEffective === false || pixPaid) {
+  // Pagamento confirmado nesta sessão OU compra já concluída anteriormente:
+  // mostra a tela de compra confirmada, sem os planos.
+  if (pixPaid || lead.purchased) {
     return (
       <div
         style={
@@ -398,66 +277,67 @@ export function PlanosClient({ app }: { app: AppConfig }) {
           </div>
 
           <h1 className="mt-6 text-2xl font-bold tracking-tight sm:text-3xl">
-            Compra bem-sucedida!
+            {lead.username && lead.password
+              ? "Compra bem-sucedida!"
+              : "Pagamento confirmado!"}
           </h1>
-          <p className="mt-3 text-zinc-600">
-            Enviamos os dados de acesso para o seu e-mail
-            {lead.email ? (
-              <>
-                {" "}
-                (<span className="font-medium text-brand-black">{lead.email}</span>)
-              </>
-            ) : null}
-            . Verifique também a caixa de spam.
-          </p>
-          <p className="mt-2 text-zinc-600">
-            Não recebeu? Entre em contato pelo WhatsApp abaixo.
-          </p>
 
-          {lead.username && lead.password && (
-            <div className="mt-6 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/5 p-4 text-left text-sm">
-              <p className="mb-2 font-semibold text-brand-black">
-                Seus dados de acesso
+          {lead.username && lead.password ? (
+            <>
+              <p className="mt-3 text-zinc-600">
+                Enviamos os dados de acesso para o seu e-mail
+                {lead.email ? (
+                  <>
+                    {" "}
+                    (
+                    <span className="font-medium text-brand-black">
+                      {lead.email}
+                    </span>
+                    )
+                  </>
+                ) : null}
+                . Verifique também a caixa de spam.
               </p>
-              <p className="text-zinc-700">
-                Usuário:{" "}
-                <span className="font-medium text-brand-black">
-                  {lead.username}
-                </span>
+              <p className="mt-2 text-zinc-600">
+                Não recebeu? Entre em contato pelo WhatsApp abaixo.
               </p>
-              <p className="text-zinc-700">
-                Senha:{" "}
-                <span className="font-medium text-brand-black">
-                  {lead.password}
-                </span>
-              </p>
-            </div>
-          )}
 
-          {venc && (venc.expDate || venc.status) && (
-            <div className="mt-6 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
-              {venc.status && (
-                <p className="text-zinc-600">
-                  Status:{" "}
+              <div className="mt-6 w-full rounded-xl border border-brand-blue/30 bg-brand-blue/5 p-4 text-left text-sm">
+                <p className="mb-2 font-semibold text-brand-black">
+                  Seus dados de acesso
+                </p>
+                <p className="text-zinc-700">
+                  Usuário:{" "}
                   <span className="font-medium text-brand-black">
-                    {venc.status}
+                    {lead.username}
                   </span>
                 </p>
-              )}
-              <p className="text-zinc-600">
-                {venc.expDate ? (
-                  <>
-                    Sua licença vence em{" "}
-                    <span className="font-medium text-brand-black">
-                      {new Date(venc.expDate * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-                    </span>{" "}
-                    ({diasRestantes(venc.expDate)}).
-                  </>
-                ) : (
-                  "Sua licença não tem data de expiração."
-                )}
-              </p>
-            </div>
+                <p className="text-zinc-700">
+                  Senha:{" "}
+                  <span className="font-medium text-brand-black">
+                    {lead.password}
+                  </span>
+                </p>
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 text-zinc-600">
+              Recebemos seu pagamento e estamos liberando seu acesso. Em
+              instantes você receberá usuário, senha e a URL do servidor no seu
+              e-mail
+              {lead.email ? (
+                <>
+                  {" "}
+                  (
+                  <span className="font-medium text-brand-black">
+                    {lead.email}
+                  </span>
+                  )
+                </>
+              ) : null}
+              . Verifique também a caixa de spam. Se não chegar em alguns
+              minutos, fale com a gente no WhatsApp abaixo.
+            </p>
           )}
 
           {whatsappSupportHref && (
@@ -467,6 +347,20 @@ export function PlanosClient({ app }: { app: AppConfig }) {
               </WhatsAppButton>
             </div>
           )}
+
+          {/* Renovar / comprar outro plano: volta para os planos. */}
+          <button
+            type="button"
+            onClick={() => {
+              const base = { email: lead.email, phone: lead.phone };
+              saveLead(app.slug, base);
+              setLead(base);
+              setPixPaid(false);
+            }}
+            className="mt-6 text-sm font-medium text-brand-blue underline-offset-2 hover:underline"
+          >
+            Comprar outro plano / renovar
+          </button>
         </section>
 
         {/* Rodapé */}
