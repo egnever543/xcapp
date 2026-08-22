@@ -12,6 +12,8 @@ import {
 import { sendAccessEmail } from "@/lib/email";
 import { getOutboundWebhook } from "@/lib/settings";
 import { normalizeHex } from "@/lib/color";
+import { provisionPurchase } from "@/lib/provisioning";
+import { releaseProvision } from "@/lib/db";
 
 export type SettingsState = { ok?: boolean; error?: string };
 
@@ -113,6 +115,26 @@ export async function resendEmail(
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Falha ao enviar." };
   }
+}
+
+// Reprocessa o provisionamento de uma compra paga (cria a conta no painel e
+// envia o e-mail). Útil quando o pagamento entrou mas a criação da conta
+// falhou. Devolve o erro real do painel quando não conseguir.
+export async function retryProvision(
+  transactionId: string,
+): Promise<{ ok: boolean; error?: string; username?: string }> {
+  let result = await provisionPurchase(transactionId);
+  // Se uma tentativa anterior travou a "claim" sem gerar credenciais, libera
+  // e tenta de novo uma vez (ação manual do painel).
+  if (!result.ok && result.status === 409) {
+    await releaseProvision(transactionId);
+    result = await provisionPurchase(transactionId);
+  }
+  revalidatePath("/admin");
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  return { ok: true, username: result.username };
 }
 
 // ---- Gestão de apps (multi-tenant) ----

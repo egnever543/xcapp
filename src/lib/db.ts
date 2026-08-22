@@ -43,6 +43,9 @@ function ensureSchema(): Promise<void> {
       `;
       // Coluna do app (multi-tenant) — adicionada se ainda não existir.
       await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS app TEXT`;
+      // Último erro de provisionamento (pagamento ok, mas criação da conta
+      // falhou) — para o painel exibir e permitir reprocessar.
+      await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS provision_error TEXT`;
     })();
   }
   return schemaReady;
@@ -101,6 +104,7 @@ export type Purchase = {
   password: string | null;
   status: string;
   provisioned: boolean;
+  provisionError: string | null;
   createdAt: string;
 };
 
@@ -116,6 +120,7 @@ type Row = {
   password: string | null;
   status: string;
   provisioned: boolean;
+  provision_error: string | null;
   created_at: string;
 };
 
@@ -132,6 +137,7 @@ function mapRow(r: Row): Purchase {
     password: r.password,
     status: r.status,
     provisioned: r.provisioned,
+    provisionError: r.provision_error ?? null,
     createdAt: r.created_at,
   };
 }
@@ -195,7 +201,7 @@ export async function releaseProvision(transactionId: string): Promise<void> {
   `;
 }
 
-// Grava as credenciais geradas e marca como pago.
+// Grava as credenciais geradas e marca como pago (limpando erro anterior).
 export async function saveCredentials(
   transactionId: string,
   username: string,
@@ -205,7 +211,34 @@ export async function saveCredentials(
   const sql = db();
   await sql`
     UPDATE purchases
-      SET username = ${username}, password = ${password}, status = 'paid', updated_at = now()
+      SET username = ${username}, password = ${password}, status = 'paid',
+          provision_error = NULL, updated_at = now()
+    WHERE transaction_id = ${transactionId}
+  `;
+}
+
+// Registra que o pagamento foi confirmado, mesmo antes de criar a conta —
+// assim dinheiro que entrou nunca fica exibido como "pendente".
+export async function markPaid(transactionId: string): Promise<void> {
+  await ensureSchema();
+  const sql = db();
+  await sql`
+    UPDATE purchases
+      SET status = 'paid', updated_at = now()
+    WHERE transaction_id = ${transactionId} AND status <> 'paid'
+  `;
+}
+
+// Guarda o último erro de provisionamento (ou limpa, com null).
+export async function setProvisionError(
+  transactionId: string,
+  error: string | null,
+): Promise<void> {
+  await ensureSchema();
+  const sql = db();
+  await sql`
+    UPDATE purchases
+      SET provision_error = ${error}, updated_at = now()
     WHERE transaction_id = ${transactionId}
   `;
 }
