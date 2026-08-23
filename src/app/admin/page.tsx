@@ -32,6 +32,18 @@ function formatDate(value: string | null): string {
   return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
+// Normaliza o telefone do cliente para um link do WhatsApp (wa.me). Assume
+// Brasil: adiciona o DDI 55 quando o número tem só DDD + número.
+function waLink(phone: string | null): { href: string; label: string } | null {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  if (!digits.startsWith("55") && (digits.length === 10 || digits.length === 11)) {
+    digits = "55" + digits;
+  }
+  return { href: `https://wa.me/${digits}`, label: phone };
+}
+
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
   approved: "bg-green-100 text-green-700",
@@ -211,7 +223,33 @@ export default async function AdminPage({
                 items.map((p) => (
                   <tr key={p.transactionId} className="border-t border-zinc-100 dark:border-zinc-800">
                     <td className="px-4 py-3">{formatDate(p.createdAt)}</td>
-                    <td className="px-4 py-3">{p.email ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className="block">{p.email ?? "—"}</span>
+                      {(() => {
+                        const wa = waLink(p.phone);
+                        return wa ? (
+                          <a
+                            href={wa.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:underline dark:text-green-400"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 fill-current"
+                            >
+                              <path d="M17.5 14.4c-.3-.15-1.7-.84-1.96-.94-.26-.1-.45-.15-.64.15-.19.29-.74.94-.9 1.13-.17.19-.33.22-.62.07-.29-.15-1.22-.45-2.32-1.43-.86-.77-1.44-1.71-1.6-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.08-.15-.64-1.55-.88-2.12-.23-.55-.47-.48-.64-.49l-.55-.01c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.02 3.08 4.9 4.32.68.29 1.21.47 1.63.6.68.22 1.31.19 1.8.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34zM12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.06L2 22l5.06-1.33A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" />
+                            </svg>
+                            {wa.label}
+                          </a>
+                        ) : (
+                          <span className="mt-0.5 block text-xs text-zinc-400">
+                            sem WhatsApp
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">{p.packageLabel ?? "—"}</td>
                     <td className="px-4 py-3 font-medium">{brl(p.amount)}</td>
                     <td className="px-4 py-3">
