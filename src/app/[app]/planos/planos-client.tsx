@@ -11,6 +11,7 @@ import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
 import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
 import { WhatsAppButton } from "../../whatsapp-button";
+import { InstallGuide } from "./install-guide";
 
 // Perguntas frequentes exibidas na página de compra.
 const faq: { q: string; a: string }[] = [
@@ -362,6 +363,9 @@ export function PlanosClient({ app }: { app: AppConfig }) {
             Comprar outro plano / renovar
           </button>
         </section>
+
+        {/* Como instalar o app */}
+        <InstallGuide app={app} />
 
         {/* Rodapé */}
         <footer className="mt-auto border-t border-zinc-200 py-8">
@@ -727,6 +731,9 @@ export function PlanosClient({ app }: { app: AppConfig }) {
           </div>
         </div>
       )}
+
+      {/* Como instalar o app */}
+      <InstallGuide app={app} />
 
       {/* Perguntas frequentes */}
       <section
