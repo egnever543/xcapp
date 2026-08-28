@@ -26,6 +26,7 @@ export async function sendAccessEmail(params: {
   accessUrl?: string;
   color?: string;
   intro?: string;
+  tutorialUrl?: string;
 }): Promise<void> {
   if (!RESEND_API_KEY || !EMAIL_FROM) {
     throw new Error("E-mail não configurado (RESEND_API_KEY/EMAIL_FROM).");
@@ -37,6 +38,7 @@ export async function sendAccessEmail(params: {
   const intro =
     params.intro?.trim() ||
     "Sua compra foi confirmada! Use os dados abaixo para acessar no app:";
+  const tutorialUrl = params.tutorialUrl?.trim() || "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
@@ -56,6 +58,14 @@ export async function sendAccessEmail(params: {
           <td style="padding: 8px; border: 1px solid #e5e5e5;">${escapeHtml(params.password)}</td>
         </tr>
       </table>
+      ${
+        tutorialUrl
+          ? `<p style="margin: 16px 0;">Não sabe como acessar? Assista ao tutorial:</p>
+      <p style="margin: 0 0 20px;">
+        <a href="${escapeHtml(tutorialUrl)}" style="display: inline-block; background: ${escapeHtml(color)}; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold;">▶ Assistir tutorial de instalação</a>
+      </p>`
+          : ""
+      }
       <p style="color: #666; font-size: 13px;">
         Guarde estes dados em local seguro. Em caso de dúvida, entre em contato pelo nosso WhatsApp.
       </p>

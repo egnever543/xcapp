@@ -102,6 +102,17 @@ function AppForm({
             className={inputClass}
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-zinc-600 dark:text-zinc-300">
+            URL do tutorial (vídeo no e-mail)
+          </span>
+          <input
+            name="tutorial_url"
+            defaultValue={app?.tutorialUrl ?? ""}
+            placeholder="https://youtu.be/…"
+            className={inputClass}
+          />
+        </label>
       </div>
 
       <label className="flex flex-col gap-1 text-sm">
