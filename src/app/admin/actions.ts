@@ -110,6 +110,7 @@ export async function resendEmail(
       accessUrl: app?.accessUrl || undefined,
       color: app?.color,
       intro: app?.emailIntro || undefined,
+      tutorialUrl: app?.tutorialUrl || undefined,
     });
     return { ok: true };
   } catch (err) {
@@ -158,6 +159,7 @@ export async function saveApp(
   const whatsapp = String(formData.get("whatsapp") ?? "").trim();
   const videoId = String(formData.get("video_id") ?? "").trim();
   const emailIntro = String(formData.get("email_intro") ?? "").trim();
+  const tutorialUrl = String(formData.get("tutorial_url") ?? "").trim();
   const active = formData.get("active") != null;
 
   if (!slug || !SLUG_RE.test(slug)) {
@@ -182,6 +184,7 @@ export async function saveApp(
       whatsapp,
       videoId,
       emailIntro,
+      tutorialUrl,
       active,
     });
     revalidatePath("/admin");

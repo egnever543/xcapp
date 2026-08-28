@@ -120,6 +120,7 @@ export async function provisionPurchase(
         accessUrl: app?.accessUrl || undefined,
         color: app?.color,
         intro: app?.emailIntro || undefined,
+        tutorialUrl: app?.tutorialUrl || undefined,
       });
     } catch (err) {
       console.error("Erro ao enviar e-mail de acesso:", err);

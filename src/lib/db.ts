@@ -329,6 +329,7 @@ export type AppRow = {
   whatsapp: string | null;
   video_id: string | null;
   email_intro: string | null;
+  tutorial_url: string | null;
   active: boolean;
 };
 
@@ -341,6 +342,7 @@ export type AppConfig = {
   whatsapp: string;
   videoId: string;
   emailIntro: string;
+  tutorialUrl: string;
   active: boolean;
 };
 
@@ -354,6 +356,7 @@ function mapApp(r: AppRow): AppConfig {
     whatsapp: r.whatsapp ?? "",
     videoId: r.video_id ?? "",
     emailIntro: r.email_intro ?? "",
+    tutorialUrl: r.tutorial_url ?? "",
     active: r.active,
   };
 }
@@ -378,6 +381,8 @@ function ensureAppsSchema(): Promise<void> {
           updated_at TIMESTAMPTZ DEFAULT now()
         )
       `;
+      // URL do tutorial (vídeo) enviado no e-mail — adicionada se não existir.
+      await sql`ALTER TABLE apps ADD COLUMN IF NOT EXISTS tutorial_url TEXT`;
       // Semeia o app xciptv na primeira vez (tabela vazia).
       await sql`
         INSERT INTO apps (slug, name, color, logo_url, video_id)
@@ -425,13 +430,14 @@ export async function upsertApp(a: {
   whatsapp?: string;
   videoId?: string;
   emailIntro?: string;
+  tutorialUrl?: string;
   active: boolean;
 }): Promise<void> {
   await ensureAppsSchema();
   const sql = db();
   await sql`
-    INSERT INTO apps (slug, name, color, logo_url, access_url, whatsapp, video_id, email_intro, active, updated_at)
-    VALUES (${a.slug}, ${a.name}, ${a.color}, ${a.logoUrl ?? null}, ${a.accessUrl ?? null}, ${a.whatsapp ?? null}, ${a.videoId ?? null}, ${a.emailIntro ?? null}, ${a.active}, now())
+    INSERT INTO apps (slug, name, color, logo_url, access_url, whatsapp, video_id, email_intro, tutorial_url, active, updated_at)
+    VALUES (${a.slug}, ${a.name}, ${a.color}, ${a.logoUrl ?? null}, ${a.accessUrl ?? null}, ${a.whatsapp ?? null}, ${a.videoId ?? null}, ${a.emailIntro ?? null}, ${a.tutorialUrl ?? null}, ${a.active}, now())
     ON CONFLICT (slug) DO UPDATE
       SET name = EXCLUDED.name,
           color = EXCLUDED.color,
@@ -440,6 +446,7 @@ export async function upsertApp(a: {
           whatsapp = EXCLUDED.whatsapp,
           video_id = EXCLUDED.video_id,
           email_intro = EXCLUDED.email_intro,
+          tutorial_url = EXCLUDED.tutorial_url,
           active = EXCLUDED.active,
           updated_at = now()
   `;
