@@ -330,6 +330,7 @@ export type AppRow = {
   video_id: string | null;
   email_intro: string | null;
   tutorial_url: string | null;
+  google_ads_customer_id: string | null;
   active: boolean;
 };
 
@@ -343,6 +344,7 @@ export type AppConfig = {
   videoId: string;
   emailIntro: string;
   tutorialUrl: string;
+  googleAdsCustomerId: string;
   active: boolean;
 };
 
@@ -357,6 +359,7 @@ function mapApp(r: AppRow): AppConfig {
     videoId: r.video_id ?? "",
     emailIntro: r.email_intro ?? "",
     tutorialUrl: r.tutorial_url ?? "",
+    googleAdsCustomerId: r.google_ads_customer_id ?? "",
     active: r.active,
   };
 }
@@ -383,6 +386,8 @@ function ensureAppsSchema(): Promise<void> {
       `;
       // URL do tutorial (vídeo) enviado no e-mail — adicionada se não existir.
       await sql`ALTER TABLE apps ADD COLUMN IF NOT EXISTS tutorial_url TEXT`;
+      // Conta do Google Ads (customer id) associada a este app.
+      await sql`ALTER TABLE apps ADD COLUMN IF NOT EXISTS google_ads_customer_id TEXT`;
       // Semeia o app xciptv na primeira vez (tabela vazia).
       await sql`
         INSERT INTO apps (slug, name, color, logo_url, video_id)
@@ -431,13 +436,14 @@ export async function upsertApp(a: {
   videoId?: string;
   emailIntro?: string;
   tutorialUrl?: string;
+  googleAdsCustomerId?: string;
   active: boolean;
 }): Promise<void> {
   await ensureAppsSchema();
   const sql = db();
   await sql`
-    INSERT INTO apps (slug, name, color, logo_url, access_url, whatsapp, video_id, email_intro, tutorial_url, active, updated_at)
-    VALUES (${a.slug}, ${a.name}, ${a.color}, ${a.logoUrl ?? null}, ${a.accessUrl ?? null}, ${a.whatsapp ?? null}, ${a.videoId ?? null}, ${a.emailIntro ?? null}, ${a.tutorialUrl ?? null}, ${a.active}, now())
+    INSERT INTO apps (slug, name, color, logo_url, access_url, whatsapp, video_id, email_intro, tutorial_url, google_ads_customer_id, active, updated_at)
+    VALUES (${a.slug}, ${a.name}, ${a.color}, ${a.logoUrl ?? null}, ${a.accessUrl ?? null}, ${a.whatsapp ?? null}, ${a.videoId ?? null}, ${a.emailIntro ?? null}, ${a.tutorialUrl ?? null}, ${a.googleAdsCustomerId ?? null}, ${a.active}, now())
     ON CONFLICT (slug) DO UPDATE
       SET name = EXCLUDED.name,
           color = EXCLUDED.color,
@@ -447,6 +453,7 @@ export async function upsertApp(a: {
           video_id = EXCLUDED.video_id,
           email_intro = EXCLUDED.email_intro,
           tutorial_url = EXCLUDED.tutorial_url,
+          google_ads_customer_id = EXCLUDED.google_ads_customer_id,
           active = EXCLUDED.active,
           updated_at = now()
   `;
@@ -456,4 +463,24 @@ export async function deleteApp(slug: string): Promise<void> {
   await ensureAppsSchema();
   const sql = db();
   await sql`DELETE FROM apps WHERE slug = ${slug}`;
+}
+
+// Vendas pagas de um app nos últimos N dias (para calcular o ROAS real
+// cruzando com o gasto do Google Ads).
+export async function getAppSalesSummary(
+  app: string,
+  days = 30,
+): Promise<{ count: number; revenue: number }> {
+  await ensureSchema();
+  const sql = db();
+  const rows = (await sql`
+    SELECT COUNT(*)::int AS count,
+           COALESCE(SUM(amount), 0) AS revenue
+    FROM purchases
+    WHERE app = ${app}
+      AND status IN ('paid', 'approved')
+      AND created_at >= now() - (${days} || ' days')::interval
+  `) as { count: number; revenue: string | number }[];
+  const r = rows[0];
+  return { count: r?.count ?? 0, revenue: Number(r?.revenue ?? 0) };
 }

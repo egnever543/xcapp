@@ -113,6 +113,17 @@ function AppForm({
             className={inputClass}
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-zinc-600 dark:text-zinc-300">
+            Conta Google Ads (customer id)
+          </span>
+          <input
+            name="google_ads_customer_id"
+            defaultValue={app?.googleAdsCustomerId ?? ""}
+            placeholder="ex.: 1234567890"
+            className={inputClass}
+          />
+        </label>
       </div>
 
       <label className="flex flex-col gap-1 text-sm">

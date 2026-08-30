@@ -11,6 +11,8 @@ import { ProvisionButton } from "./provision-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { AppsManager } from "./apps-manager";
+import { GoogleAdsPanel } from "./google-ads-panel";
+import { getConnectionStatus } from "@/lib/google-ads";
 import { AutoRefresh } from "./auto-refresh";
 import { SalesNotifier } from "./sales-notifier";
 import { AdminTheme } from "./admin-theme";
@@ -101,6 +103,11 @@ export default async function AdminPage({
       apps = [];
     }
   }
+  const googleStatus = await getConnectionStatus().catch(() => ({
+    connected: false,
+    email: "",
+    configured: false,
+  }));
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const cards = [
     { label: "Recebido (pago)", value: brl(paidAmount) },
@@ -147,6 +154,16 @@ export default async function AdminPage({
 
         {/* Gestão de apps (multi-tenant) */}
         <AppsManager apps={apps} />
+
+        {/* Google Ads — desempenho e gestão por app */}
+        <GoogleAdsPanel
+          status={googleStatus}
+          apps={apps.map((a) => ({
+            slug: a.slug,
+            name: a.name,
+            googleAdsCustomerId: a.googleAdsCustomerId,
+          }))}
+        />
 
         {/* Histórico de vendas — atualização automática + alertas */}
         <div className="mt-8 flex flex-wrap items-center gap-3">
