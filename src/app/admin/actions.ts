@@ -299,3 +299,18 @@ export async function disconnectGoogleAds(): Promise<{ ok: boolean }> {
   revalidatePath("/admin");
   return { ok: true };
 }
+
+// ---- BotBot (WhatsApp) ----
+
+// Envia uma mensagem de teste pelo WhatsApp e devolve a resposta crua da BotBot
+// para diagnóstico (status HTTP + corpo).
+export async function testBotbot(
+  phone: string,
+): Promise<{ ok: boolean; status: number; body?: string; error?: string }> {
+  const { sendWhatsappDetailed } = await import("@/lib/botbot");
+  const r = await sendWhatsappDetailed(
+    phone,
+    "✅ Teste do painel: se você recebeu isto, o envio pelo WhatsApp está funcionando.",
+  );
+  return { ok: r.ok, status: r.status, body: r.body, error: r.error };
+}
