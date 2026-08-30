@@ -13,7 +13,14 @@ import { sendAccessEmail } from "@/lib/email";
 import { getOutboundWebhook } from "@/lib/settings";
 import { normalizeHex } from "@/lib/color";
 import { provisionPurchase } from "@/lib/provisioning";
-import { releaseProvision } from "@/lib/db";
+import { releaseProvision, getAppSalesSummary } from "@/lib/db";
+import {
+  listCampaignMetrics,
+  setCampaignStatus,
+  setCampaignBudget,
+  disconnect as googleDisconnect,
+  type CampaignMetrics,
+} from "@/lib/google-ads";
 
 export type SettingsState = { ok?: boolean; error?: string };
 
@@ -160,6 +167,10 @@ export async function saveApp(
   const videoId = String(formData.get("video_id") ?? "").trim();
   const emailIntro = String(formData.get("email_intro") ?? "").trim();
   const tutorialUrl = String(formData.get("tutorial_url") ?? "").trim();
+  const googleAdsCustomerId = String(
+    formData.get("google_ads_customer_id") ?? "",
+  )
+    .replace(/\D/g, "");
   const active = formData.get("active") != null;
 
   if (!slug || !SLUG_RE.test(slug)) {
@@ -185,6 +196,7 @@ export async function saveApp(
       videoId,
       emailIntro,
       tutorialUrl,
+      googleAdsCustomerId,
       active,
     });
     revalidatePath("/admin");
@@ -208,4 +220,82 @@ export async function removeApp(
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Falha ao remover." };
   }
+}
+
+// ---- Google Ads ----
+
+export type CampaignsResult = {
+  ok: boolean;
+  error?: string;
+  campaigns?: CampaignMetrics[];
+  sales?: { count: number; revenue: number };
+};
+
+// Carrega as campanhas de um app (pela conta associada) + as vendas reais do
+// período, para exibir o ROAS real no painel.
+export async function loadCampaigns(
+  appSlug: string,
+  days = 30,
+): Promise<CampaignsResult> {
+  const app = await getApp(appSlug);
+  if (!app) return { ok: false, error: "App não encontrado." };
+  if (!app.googleAdsCustomerId) {
+    return { ok: false, error: "Este app não tem conta do Google Ads definida." };
+  }
+  try {
+    const campaigns = await listCampaignMetrics(app.googleAdsCustomerId, days);
+    const sales = await getAppSalesSummary(appSlug, days).catch(() => ({
+      count: 0,
+      revenue: 0,
+    }));
+    return { ok: true, campaigns, sales };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message ?? "Falha ao consultar." };
+  }
+}
+
+// Pausa/ativa uma campanha (Fase 2).
+export async function updateCampaignStatus(
+  appSlug: string,
+  campaignId: string,
+  status: "ENABLED" | "PAUSED",
+): Promise<{ ok: boolean; error?: string }> {
+  const app = await getApp(appSlug);
+  if (!app?.googleAdsCustomerId) {
+    return { ok: false, error: "Conta do Google Ads não definida." };
+  }
+  try {
+    await setCampaignStatus(app.googleAdsCustomerId, campaignId, status);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message ?? "Falha ao aplicar." };
+  }
+}
+
+// Ajusta o orçamento diário (reais) de uma campanha (Fase 2).
+export async function updateCampaignBudget(
+  appSlug: string,
+  budgetResource: string,
+  dailyReais: number,
+): Promise<{ ok: boolean; error?: string }> {
+  const app = await getApp(appSlug);
+  if (!app?.googleAdsCustomerId) {
+    return { ok: false, error: "Conta do Google Ads não definida." };
+  }
+  if (!(dailyReais > 0)) {
+    return { ok: false, error: "Informe um orçamento válido." };
+  }
+  try {
+    await setCampaignBudget(app.googleAdsCustomerId, budgetResource, dailyReais);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message ?? "Falha ao aplicar." };
+  }
+}
+
+// Desconecta a conta do Google Ads (remove o refresh token salvo).
+export async function disconnectGoogleAds(): Promise<{ ok: boolean }> {
+  await googleDisconnect();
+  revalidatePath("/admin");
+  return { ok: true };
 }

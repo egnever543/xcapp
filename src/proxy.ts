@@ -25,5 +25,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  // Protege o painel e o início do fluxo OAuth do Google Ads. O callback do
+  // Google (/api/google-ads/callback) fica FORA (o Google precisa acessá-lo).
+  matcher: ["/admin", "/admin/:path*", "/api/google-ads/connect"],
 };
