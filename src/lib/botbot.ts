@@ -61,6 +61,41 @@ export async function sendWhatsappMessage(
   }
 }
 
+// Versão com detalhes para diagnóstico no painel: devolve status HTTP e corpo.
+export async function sendWhatsappDetailed(
+  toRaw: string,
+  message: string,
+): Promise<{ ok: boolean; status: number; body: string; error?: string }> {
+  if (!isBotbotConfigured()) {
+    return {
+      ok: false,
+      status: 0,
+      body: "",
+      error:
+        "BotBot não configurado (defina BOTBOT_AUTH_KEY e BOTBOT_APP_KEY e faça um redeploy).",
+    };
+  }
+  const to = normalizeBrPhone(toRaw);
+  if (!to) {
+    return { ok: false, status: 0, body: "", error: "Telefone inválido." };
+  }
+  try {
+    const res = await fetch(`${API_URL}/api/v2/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", authKey: AUTH_KEY },
+      body: JSON.stringify({
+        message,
+        channels: { whatsapp: { appKey: APP_KEY, to } },
+      }),
+      cache: "no-store",
+    });
+    const body = await res.text().catch(() => "");
+    return { ok: res.ok, status: res.status, body };
+  } catch (err) {
+    return { ok: false, status: 0, body: "", error: (err as Error).message };
+  }
+}
+
 // Envia o Pix copia e cola de uma cobrança pendente.
 export async function sendPixCodeWhatsapp(input: {
   to: string;

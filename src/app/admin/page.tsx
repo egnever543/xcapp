@@ -12,6 +12,7 @@ import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { AppsManager } from "./apps-manager";
 import { GoogleAdsPanel } from "./google-ads-panel";
+import { BotbotTest } from "./botbot-test";
 import { getConnectionStatus } from "@/lib/google-ads";
 import { AutoRefresh } from "./auto-refresh";
 import { SalesNotifier } from "./sales-notifier";
@@ -151,6 +152,9 @@ export default async function AdminPage({
 
         {/* Webhook de eventos */}
         <WebhookForm url={webhook.url} hasSecret={!!webhook.secret} />
+
+        {/* Teste de WhatsApp (BotBot) */}
+        <BotbotTest />
 
         {/* Gestão de apps (multi-tenant) */}
         <AppsManager apps={apps} />
