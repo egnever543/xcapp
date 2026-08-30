@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getPackage, priceReais } from "@/lib/packages";
 import { createTransaction, getTransaction } from "@/lib/fastdepix";
 import { savePurchaseInit, hasDb, getApp } from "@/lib/db";
@@ -56,22 +56,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // Envia o Pix copia e cola no WhatsApp do cliente (cobrança pendente).
-    // Tolerante a falha: não bloqueia nem quebra o checkout.
+    // Envia o Pix copia e cola no WhatsApp do cliente (cobrança pendente),
+    // em segundo plano (after) — são duas mensagens com ~3s de intervalo, e
+    // não devem atrasar a resposta do checkout. Tolerante a falha.
     if (phone && tx.qrCodeText) {
-      try {
-        const cfg = hasDb() && app ? await getApp(app).catch(() => null) : null;
-        const nome = cfg?.name ?? "Seu plano";
-        const productName = `${nome} · ${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`;
-        await sendPixCodeWhatsapp({
-          to: phone,
-          productName,
-          amount: priceReais(pkg.priceCents),
-          pixCode: tx.qrCodeText,
-        });
-      } catch (err) {
-        console.error("Erro ao enviar Pix por WhatsApp:", err);
-      }
+      const pixCode = tx.qrCodeText;
+      const amount = priceReais(pkg.priceCents);
+      const productBase = `${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`;
+      after(async () => {
+        try {
+          const cfg =
+            hasDb() && app ? await getApp(app).catch(() => null) : null;
+          const nome = cfg?.name ?? "Seu plano";
+          await sendPixCodeWhatsapp({
+            to: phone,
+            productName: `${nome} · ${productBase}`,
+            amount,
+            pixCode,
+          });
+        } catch (err) {
+          console.error("Erro ao enviar Pix por WhatsApp:", err);
+        }
+      });
     }
 
     return NextResponse.json({
