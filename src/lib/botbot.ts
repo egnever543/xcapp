@@ -96,7 +96,11 @@ export async function sendWhatsappDetailed(
   }
 }
 
-// Envia o Pix copia e cola de uma cobrança pendente.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Envia o Pix copia e cola de uma cobrança pendente, em DUAS mensagens: a
+// primeira explica; a segunda traz só o código (fica fácil de copiar). Um
+// intervalo de ~3s separa as duas.
 export async function sendPixCodeWhatsapp(input: {
   to: string;
   productName: string;
@@ -108,10 +112,14 @@ export async function sendPixCodeWhatsapp(input: {
     style: "currency",
     currency: "BRL",
   });
-  const message =
+  const intro =
     `🔔 *${input.productName}* — ${valor}\n\n` +
-    `Para concluir sua compra, pague com o Pix copia e cola abaixo 👇\n\n` +
-    `${input.pixCode}\n\n` +
+    `Para concluir sua compra, pague com o Pix copia e cola que vou enviar na próxima mensagem 👇\n\n` +
     `Assim que o pagamento for confirmado, enviamos seu acesso por aqui. 🚀`;
-  return sendWhatsappMessage(input.to, message);
+
+  await sendWhatsappMessage(input.to, intro);
+  // Intervalo para o código chegar como mensagem separada.
+  await sleep(3000);
+  // Segunda mensagem: só o código, para o cliente copiar com um toque.
+  return sendWhatsappMessage(input.to, input.pixCode);
 }
