@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPackage, priceReais } from "@/lib/packages";
 import { createTransaction, getTransaction } from "@/lib/fastdepix";
-import { savePurchaseInit, hasDb } from "@/lib/db";
+import { savePurchaseInit, hasDb, getApp } from "@/lib/db";
+import { sendPixCodeWhatsapp } from "@/lib/botbot";
 
 // Cria uma cobrança PIX para o pacote escolhido.
 export async function POST(request: Request) {
@@ -52,6 +53,24 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         console.error("Erro ao registrar a compra:", err);
+      }
+    }
+
+    // Envia o Pix copia e cola no WhatsApp do cliente (cobrança pendente).
+    // Tolerante a falha: não bloqueia nem quebra o checkout.
+    if (phone && tx.qrCodeText) {
+      try {
+        const cfg = hasDb() && app ? await getApp(app).catch(() => null) : null;
+        const nome = cfg?.name ?? "Seu plano";
+        const productName = `${nome} · ${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`;
+        await sendPixCodeWhatsapp({
+          to: phone,
+          productName,
+          amount: priceReais(pkg.priceCents),
+          pixCode: tx.qrCodeText,
+        });
+      } catch (err) {
+        console.error("Erro ao enviar Pix por WhatsApp:", err);
       }
     }
 
