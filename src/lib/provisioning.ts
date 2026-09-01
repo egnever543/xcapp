@@ -3,6 +3,7 @@ import { getPackage, priceReais } from "@/lib/packages";
 import { getTransaction } from "@/lib/fastdepix";
 import { createCustomer } from "@/lib/sigma";
 import { sendAccessEmail } from "@/lib/email";
+import { sendAccessWhatsapp } from "@/lib/botbot";
 import { sendOutboundEvent } from "@/lib/webhook";
 import {
   getPurchase,
@@ -124,6 +125,22 @@ export async function provisionPurchase(
       });
     } catch (err) {
       console.error("Erro ao enviar e-mail de acesso:", err);
+    }
+  }
+
+  // Envia os dados de acesso também no WhatsApp (não bloqueia se falhar).
+  if (purchase.phone) {
+    try {
+      await sendAccessWhatsapp({
+        to: purchase.phone,
+        appName: app?.name ?? "seu app",
+        accessUrl: app?.accessUrl || undefined,
+        username,
+        password,
+        tutorialUrl: app?.tutorialUrl || undefined,
+      });
+    } catch (err) {
+      console.error("Erro ao enviar acesso por WhatsApp:", err);
     }
   }
 

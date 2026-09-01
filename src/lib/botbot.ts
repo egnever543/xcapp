@@ -123,3 +123,35 @@ export async function sendPixCodeWhatsapp(input: {
   // Segunda mensagem: só o código, para o cliente copiar com um toque.
   return sendWhatsappMessage(input.to, input.pixCode);
 }
+
+// Envia os dados de acesso (após o pagamento confirmado). Manda uma mensagem
+// de confirmação e, ~3s depois, uma segunda só com "usuário / senha" para o
+// cliente copiar com um toque.
+export async function sendAccessWhatsapp(input: {
+  to: string;
+  appName: string;
+  accessUrl?: string;
+  username: string;
+  password: string;
+  tutorialUrl?: string;
+}): Promise<boolean> {
+  const linhas = [
+    `✅ *Pagamento confirmado!* Seu acesso ao *${input.appName}* está pronto. 🎉`,
+    "",
+  ];
+  if (input.accessUrl) linhas.push(`🌐 Servidor/URL: ${input.accessUrl}`);
+  linhas.push(`👤 Usuário: ${input.username}`);
+  linhas.push(`🔒 Senha: ${input.password}`);
+  if (input.tutorialUrl) {
+    linhas.push("", `▶ Como instalar: ${input.tutorialUrl}`);
+  }
+  linhas.push("", "Enviamos também por e-mail. Qualquer dúvida, é só chamar. 🚀");
+
+  await sendWhatsappMessage(input.to, linhas.join("\n"));
+  // Segunda mensagem com só usuário e senha, fácil de copiar.
+  await sleep(3000);
+  return sendWhatsappMessage(
+    input.to,
+    `Usuário: ${input.username}\nSenha: ${input.password}`,
+  );
+}
