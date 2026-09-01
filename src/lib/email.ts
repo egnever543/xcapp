@@ -27,6 +27,8 @@ export async function sendAccessEmail(params: {
   color?: string;
   intro?: string;
   tutorialUrl?: string;
+  tutorialRemoteUrl?: string;
+  tutorialTvUrl?: string;
 }): Promise<void> {
   if (!RESEND_API_KEY || !EMAIL_FROM) {
     throw new Error("E-mail não configurado (RESEND_API_KEY/EMAIL_FROM).");
@@ -39,6 +41,19 @@ export async function sendAccessEmail(params: {
     params.intro?.trim() ||
     "Sua compra foi confirmada! Use os dados abaixo para acessar no app:";
   const tutorialUrl = params.tutorialUrl?.trim() || "";
+  const tutorialRemoteUrl = params.tutorialRemoteUrl?.trim() || "";
+  const tutorialTvUrl = params.tutorialTvUrl?.trim() || "";
+
+  // Botão de tutorial reutilizável.
+  const btn = (href: string, label: string) =>
+    `<a href="${escapeHtml(href)}" style="display: inline-block; margin: 0 8px 8px 0; background: ${escapeHtml(color)}; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold;">${escapeHtml(label)}</a>`;
+
+  const tutoriais: string[] = [];
+  if (tutorialRemoteUrl)
+    tutoriais.push(btn(tutorialRemoteUrl, "▶ Tutorial: instalação remota"));
+  if (tutorialTvUrl)
+    tutoriais.push(btn(tutorialTvUrl, "▶ Tutorial: instalar na própria TV"));
+  if (tutorialUrl) tutoriais.push(btn(tutorialUrl, "▶ Tutorial de instalação"));
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0a0a0a;">
@@ -59,11 +74,9 @@ export async function sendAccessEmail(params: {
         </tr>
       </table>
       ${
-        tutorialUrl
-          ? `<p style="margin: 16px 0;">Não sabe como acessar? Assista ao tutorial:</p>
-      <p style="margin: 0 0 20px;">
-        <a href="${escapeHtml(tutorialUrl)}" style="display: inline-block; background: ${escapeHtml(color)}; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold;">▶ Assistir tutorial de instalação</a>
-      </p>`
+        tutoriais.length
+          ? `<p style="margin: 16px 0;">Como fazer o login no app (2 formas):</p>
+      <p style="margin: 0 0 20px;">${tutoriais.join("")}</p>`
           : ""
       }
       <p style="color: #666; font-size: 13px;">

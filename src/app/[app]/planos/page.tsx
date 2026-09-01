@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getApp, hasDb } from "@/lib/db";
+import { getLoginTutorials } from "@/lib/settings";
 import { PlanosClient } from "./planos-client";
 
 export const dynamic = "force-dynamic";
@@ -13,5 +14,9 @@ export default async function AppPlanos({
   if (!hasDb()) notFound();
   const app = await getApp(slug);
   if (!app || !app.active) notFound();
-  return <PlanosClient app={app} />;
+  const tutorials = await getLoginTutorials().catch(() => ({
+    remoteUrl: "",
+    tvUrl: "",
+  }));
+  return <PlanosClient app={app} tutorials={tutorials} />;
 }

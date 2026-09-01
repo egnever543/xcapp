@@ -63,7 +63,15 @@ function devices(appName: string): Device[] {
   ];
 }
 
-export function InstallGuide({ app }: { app: AppConfig }) {
+export function InstallGuide({
+  app,
+  tutorialRemoteUrl = "",
+  tutorialTvUrl = "",
+}: {
+  app: AppConfig;
+  tutorialRemoteUrl?: string;
+  tutorialTvUrl?: string;
+}) {
   const lista = devices(app.name);
   return (
     <section
@@ -87,6 +95,31 @@ export function InstallGuide({ app }: { app: AppConfig }) {
           loja do seu aparelho — o ícone é o mesmo mostrado acima — e entre com
           o usuário e a senha enviados no seu e-mail.
         </p>
+
+        {(tutorialRemoteUrl || tutorialTvUrl) && (
+          <div className="mt-2 flex flex-wrap justify-center gap-3">
+            {tutorialRemoteUrl && (
+              <a
+                href={tutorialRemoteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-blue-dark"
+              >
+                ▶ Tutorial: instalação remota
+              </a>
+            )}
+            {tutorialTvUrl && (
+              <a
+                href={tutorialTvUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-brand-blue px-5 py-2.5 text-sm font-semibold text-brand-blue transition-colors hover:bg-brand-blue/10"
+              >
+                ▶ Tutorial: instalar na própria TV
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">

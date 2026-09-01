@@ -4,6 +4,7 @@ import { getTransaction } from "@/lib/fastdepix";
 import { createCustomer } from "@/lib/sigma";
 import { sendAccessEmail } from "@/lib/email";
 import { sendAccessWhatsapp } from "@/lib/botbot";
+import { getLoginTutorials } from "@/lib/settings";
 import { sendOutboundEvent } from "@/lib/webhook";
 import {
   getPurchase,
@@ -109,6 +110,11 @@ export async function provisionPurchase(
 
   // Carrega a config do app da compra (marca/URL/cor/intro do e-mail).
   const app = purchase.app ? await getApp(purchase.app) : null;
+  // Tutoriais de login (globais): instalação remota e na própria TV.
+  const tutoriais = await getLoginTutorials().catch(() => ({
+    remoteUrl: "",
+    tvUrl: "",
+  }));
 
   // Envia as credenciais por e-mail (não bloqueia se falhar).
   if (purchase.email) {
@@ -122,6 +128,8 @@ export async function provisionPurchase(
         color: app?.color,
         intro: app?.emailIntro || undefined,
         tutorialUrl: app?.tutorialUrl || undefined,
+        tutorialRemoteUrl: tutoriais.remoteUrl || undefined,
+        tutorialTvUrl: tutoriais.tvUrl || undefined,
       });
     } catch (err) {
       console.error("Erro ao enviar e-mail de acesso:", err);
@@ -138,6 +146,8 @@ export async function provisionPurchase(
         username,
         password,
         tutorialUrl: app?.tutorialUrl || undefined,
+        tutorialRemoteUrl: tutoriais.remoteUrl || undefined,
+        tutorialTvUrl: tutoriais.tvUrl || undefined,
       });
     } catch (err) {
       console.error("Erro ao enviar acesso por WhatsApp:", err);
