@@ -3,8 +3,9 @@ import { getSettings, hasDb } from "@/lib/db";
 // Valor padrão do Google Ads (tag base) — pode ser sobrescrito no painel.
 export const DEFAULT_GOOGLE_ADS_ID = "AW-16999732658";
 
-// Tutorial de login padrão (instalação remota) — pode ser trocado no painel.
+// Tutoriais de login padrão — podem ser trocados no painel.
 export const DEFAULT_TUTORIAL_REMOTE_URL = "https://youtu.be/OeWl9VX2UE4";
+export const DEFAULT_TUTORIAL_TV_URL = "https://youtu.be/8cbPeLCofXA";
 
 export type SiteSettings = {
   googleAdsId: string; // AW-XXXXXXXXX (tag base)
@@ -34,7 +35,10 @@ export async function loadSettings(): Promise<SiteSettings> {
       stored.tutorial_remote_url != null
         ? stored.tutorial_remote_url
         : DEFAULT_TUTORIAL_REMOTE_URL,
-    tutorialTvUrl: stored.tutorial_tv_url || "",
+    tutorialTvUrl:
+      stored.tutorial_tv_url != null
+        ? stored.tutorial_tv_url
+        : DEFAULT_TUTORIAL_TV_URL,
   };
 }
 
