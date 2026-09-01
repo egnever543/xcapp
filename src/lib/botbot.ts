@@ -134,6 +134,8 @@ export async function sendAccessWhatsapp(input: {
   username: string;
   password: string;
   tutorialUrl?: string;
+  tutorialRemoteUrl?: string;
+  tutorialTvUrl?: string;
 }): Promise<boolean> {
   const linhas = [
     `✅ *Pagamento confirmado!* Seu acesso ao *${input.appName}* está pronto. 🎉`,
@@ -142,8 +144,17 @@ export async function sendAccessWhatsapp(input: {
   if (input.accessUrl) linhas.push(`🌐 Servidor/URL: ${input.accessUrl}`);
   linhas.push(`👤 Usuário: ${input.username}`);
   linhas.push(`🔒 Senha: ${input.password}`);
-  if (input.tutorialUrl) {
-    linhas.push("", `▶ Como instalar: ${input.tutorialUrl}`);
+
+  const temTutorial =
+    input.tutorialRemoteUrl || input.tutorialTvUrl || input.tutorialUrl;
+  if (temTutorial) {
+    linhas.push("", "*Como fazer o login (2 formas):*");
+    if (input.tutorialRemoteUrl)
+      linhas.push(`▶ Instalação remota: ${input.tutorialRemoteUrl}`);
+    if (input.tutorialTvUrl)
+      linhas.push(`▶ Instalar na própria TV: ${input.tutorialTvUrl}`);
+    if (input.tutorialUrl)
+      linhas.push(`▶ Tutorial de instalação: ${input.tutorialUrl}`);
   }
   linhas.push("", "Enviamos também por e-mail. Qualquer dúvida, é só chamar. 🚀");
 

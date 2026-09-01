@@ -10,7 +10,7 @@ import {
   deleteApp,
 } from "@/lib/db";
 import { sendAccessEmail } from "@/lib/email";
-import { getOutboundWebhook } from "@/lib/settings";
+import { getOutboundWebhook, getLoginTutorials } from "@/lib/settings";
 import { normalizeHex } from "@/lib/color";
 import { provisionPurchase } from "@/lib/provisioning";
 import { releaseProvision, getAppSalesSummary } from "@/lib/db";
@@ -38,6 +38,23 @@ export async function saveSettings(
     await setSetting("google_conversion_label", conversionLabel);
     revalidatePath("/admin");
     revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { error: (err as Error).message ?? "Falha ao salvar." };
+  }
+}
+
+// Salva os tutoriais de login (instalação remota e na própria TV).
+export async function saveTutorials(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const remote = String(formData.get("tutorial_remote_url") ?? "").trim();
+  const tv = String(formData.get("tutorial_tv_url") ?? "").trim();
+  try {
+    await setSetting("tutorial_remote_url", remote);
+    await setSetting("tutorial_tv_url", tv);
+    revalidatePath("/admin");
     return { ok: true };
   } catch (err) {
     return { error: (err as Error).message ?? "Falha ao salvar." };
@@ -108,6 +125,10 @@ export async function resendEmail(
     return { ok: false, error: "Acesso ainda não gerado (não pago?)." };
   }
   const app = purchase.app ? await getApp(purchase.app) : null;
+  const tutoriais = await getLoginTutorials().catch(() => ({
+    remoteUrl: "",
+    tvUrl: "",
+  }));
   try {
     await sendAccessEmail({
       email: purchase.email,
@@ -118,6 +139,8 @@ export async function resendEmail(
       color: app?.color,
       intro: app?.emailIntro || undefined,
       tutorialUrl: app?.tutorialUrl || undefined,
+      tutorialRemoteUrl: tutoriais.remoteUrl || undefined,
+      tutorialTvUrl: tutoriais.tvUrl || undefined,
     });
     return { ok: true };
   } catch (err) {

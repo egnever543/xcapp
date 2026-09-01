@@ -65,7 +65,13 @@ type PixData = {
   packageId: string; // pacote escolhido (para o provisionamento)
 };
 
-export function PlanosClient({ app }: { app: AppConfig }) {
+export function PlanosClient({
+  app,
+  tutorials = { remoteUrl: "", tvUrl: "" },
+}: {
+  app: AppConfig;
+  tutorials?: { remoteUrl: string; tvUrl: string };
+}) {
   const router = useRouter();
   // Contatos de WhatsApp derivados da config do app (venda e suporte usam o
   // mesmo número; vazio quando o app não define um número).
@@ -365,7 +371,11 @@ export function PlanosClient({ app }: { app: AppConfig }) {
         </section>
 
         {/* Como instalar o app */}
-        <InstallGuide app={app} />
+        <InstallGuide
+          app={app}
+          tutorialRemoteUrl={tutorials.remoteUrl}
+          tutorialTvUrl={tutorials.tvUrl}
+        />
 
         {/* Rodapé */}
         <footer className="mt-auto border-t border-zinc-200 py-8">
@@ -733,7 +743,11 @@ export function PlanosClient({ app }: { app: AppConfig }) {
       )}
 
       {/* Como instalar o app */}
-      <InstallGuide app={app} />
+      <InstallGuide
+        app={app}
+        tutorialRemoteUrl={tutorials.remoteUrl}
+        tutorialTvUrl={tutorials.tvUrl}
+      />
 
       {/* Perguntas frequentes */}
       <section

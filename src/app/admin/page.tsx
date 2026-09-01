@@ -10,6 +10,7 @@ import { ResendEmailButton } from "./resend-button";
 import { ProvisionButton } from "./provision-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
+import { TutorialsForm } from "./tutorials-form";
 import { AppsManager } from "./apps-manager";
 import { GoogleAdsPanel } from "./google-ads-panel";
 import { BotbotTest } from "./botbot-test";
@@ -152,6 +153,12 @@ export default async function AdminPage({
 
         {/* Webhook de eventos */}
         <WebhookForm url={webhook.url} hasSecret={!!webhook.secret} />
+
+        {/* Tutoriais de login (e-mail + WhatsApp) */}
+        <TutorialsForm
+          remoteUrl={settings.tutorialRemoteUrl}
+          tvUrl={settings.tutorialTvUrl}
+        />
 
         {/* Teste de WhatsApp (BotBot) */}
         <BotbotTest />
