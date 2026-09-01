@@ -147,11 +147,6 @@ export async function sendAccessWhatsapp(input: {
   }
   linhas.push("", "Enviamos também por e-mail. Qualquer dúvida, é só chamar. 🚀");
 
-  await sendWhatsappMessage(input.to, linhas.join("\n"));
-  // Segunda mensagem com só usuário e senha, fácil de copiar.
-  await sleep(3000);
-  return sendWhatsappMessage(
-    input.to,
-    `Usuário: ${input.username}\nSenha: ${input.password}`,
-  );
+  // Uma única mensagem com os dados de acesso.
+  return sendWhatsappMessage(input.to, linhas.join("\n"));
 }
