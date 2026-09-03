@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LeadForm } from "./lead-form";
+import { ExitIntent } from "./exit-intent";
 import { getLead } from "@/lib/lead-storage";
 import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
@@ -56,6 +57,13 @@ export function HomeClient({ app }: { app: AppConfig }) {
 
         <LeadForm appSlug={app.slug} />
       </div>
+
+      <ExitIntent
+        appSlug={app.slug}
+        appName={app.name}
+        appColor={app.color}
+        whatsapp={app.whatsapp}
+      />
     </div>
   );
 }
