@@ -12,6 +12,7 @@ import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
 import { WhatsAppButton } from "../../whatsapp-button";
 import { InstallGuide } from "./install-guide";
+import { ExitIntent } from "../exit-intent";
 
 // Perguntas frequentes exibidas na página de compra.
 const faq: { q: string; a: string }[] = [
@@ -827,6 +828,14 @@ export function PlanosClient({
           reservados.
         </div>
       </footer>
+
+      {/* Oferta de teste grátis ao tentar sair (exit intent) */}
+      <ExitIntent
+        appSlug={app.slug}
+        appName={app.name}
+        appColor={app.color}
+        whatsapp={app.whatsapp}
+      />
     </div>
   );
 }
