@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LeadForm } from "./lead-form";
 import { ExitIntent } from "./exit-intent";
-import { getLead } from "@/lib/lead-storage";
+import { getLead, captureGclid } from "@/lib/lead-storage";
 import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
 
@@ -14,6 +14,7 @@ export function HomeClient({ app }: { app: AppConfig }) {
 
   // Se já existir lead válido salvo (até 7 dias), pula o formulário.
   useEffect(() => {
+    captureGclid(); // guarda o gclid do anúncio, se houver
     if (getLead(app.slug)) {
       router.replace(`/${app.slug}/planos`);
     } else {

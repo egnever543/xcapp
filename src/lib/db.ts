@@ -46,6 +46,9 @@ function ensureSchema(): Promise<void> {
       // Último erro de provisionamento (pagamento ok, mas criação da conta
       // falhou) — para o painel exibir e permitir reprocessar.
       await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS provision_error TEXT`;
+      // GCLID do Google Ads (capturado no clique do anúncio), para conversões
+      // offline.
+      await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS gclid TEXT`;
     })();
   }
   return schemaReady;
@@ -105,6 +108,7 @@ export type Purchase = {
   status: string;
   provisioned: boolean;
   provisionError: string | null;
+  gclid: string | null;
   createdAt: string;
 };
 
@@ -121,6 +125,7 @@ type Row = {
   status: string;
   provisioned: boolean;
   provision_error: string | null;
+  gclid: string | null;
   created_at: string;
 };
 
@@ -138,6 +143,7 @@ function mapRow(r: Row): Purchase {
     status: r.status,
     provisioned: r.provisioned,
     provisionError: r.provision_error ?? null,
+    gclid: r.gclid ?? null,
     createdAt: r.created_at,
   };
 }
@@ -151,12 +157,13 @@ export async function savePurchaseInit(p: {
   packageId: string;
   packageLabel: string;
   amount: number;
+  gclid?: string;
 }): Promise<void> {
   await ensureSchema();
   const sql = db();
   await sql`
-    INSERT INTO purchases (transaction_id, app, email, phone, package_id, package_label, amount, status)
-    VALUES (${p.transactionId}, ${p.app ?? null}, ${p.email ?? null}, ${p.phone ?? null}, ${p.packageId}, ${p.packageLabel}, ${p.amount}, 'pending')
+    INSERT INTO purchases (transaction_id, app, email, phone, package_id, package_label, amount, gclid, status)
+    VALUES (${p.transactionId}, ${p.app ?? null}, ${p.email ?? null}, ${p.phone ?? null}, ${p.packageId}, ${p.packageLabel}, ${p.amount}, ${p.gclid ?? null}, 'pending')
     ON CONFLICT (transaction_id) DO UPDATE
       SET app = EXCLUDED.app,
           email = EXCLUDED.email,
@@ -164,6 +171,7 @@ export async function savePurchaseInit(p: {
           package_id = EXCLUDED.package_id,
           package_label = EXCLUDED.package_label,
           amount = EXCLUDED.amount,
+          gclid = COALESCE(EXCLUDED.gclid, purchases.gclid),
           updated_at = now()
   `;
 }
@@ -483,4 +491,45 @@ export async function getAppSalesSummary(
   `) as { count: number; revenue: string | number }[];
   const r = rows[0];
   return { count: r?.count ?? 0, revenue: Number(r?.revenue ?? 0) };
+}
+
+// Compras pagas nas últimas N horas (para o feed de conversões offline do
+// Google Ads). Usa created_at como horário da conversão (o pagamento ocorre
+// logo após a criação da cobrança).
+export type PaidConversion = {
+  transactionId: string;
+  email: string | null;
+  phone: string | null;
+  amount: number | null;
+  gclid: string | null;
+  createdAt: string;
+};
+
+export async function listPaidSince(
+  hours = 24,
+): Promise<PaidConversion[]> {
+  await ensureSchema();
+  const sql = db();
+  const rows = (await sql`
+    SELECT transaction_id, email, phone, amount, gclid, created_at
+    FROM purchases
+    WHERE status IN ('paid', 'approved')
+      AND created_at >= now() - (${hours} || ' hours')::interval
+    ORDER BY created_at DESC
+  `) as {
+    transaction_id: string;
+    email: string | null;
+    phone: string | null;
+    amount: string | number | null;
+    gclid: string | null;
+    created_at: string;
+  }[];
+  return rows.map((r) => ({
+    transactionId: r.transaction_id,
+    email: r.email,
+    phone: r.phone,
+    amount: r.amount != null ? Number(r.amount) : null,
+    gclid: r.gclid,
+    createdAt: r.created_at,
+  }));
 }
