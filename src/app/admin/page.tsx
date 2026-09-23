@@ -11,6 +11,7 @@ import { ProvisionButton } from "./provision-button";
 import { SettingsForm } from "./settings-form";
 import { WebhookForm } from "./webhook-form";
 import { TutorialsForm } from "./tutorials-form";
+import { ProofForm } from "./proof-form";
 import { AppsManager } from "./apps-manager";
 import { GoogleAdsPanel } from "./google-ads-panel";
 import { BotbotTest } from "./botbot-test";
@@ -159,6 +160,9 @@ export default async function AdminPage({
           remoteUrl={settings.tutorialRemoteUrl}
           tvUrl={settings.tutorialTvUrl}
         />
+
+        {/* Provas sociais (carrossel na página de vendas) */}
+        <ProofForm images={settings.proofImages} />
 
         {/* Teste de WhatsApp (BotBot) */}
         <BotbotTest />

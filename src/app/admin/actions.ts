@@ -61,6 +61,22 @@ export async function saveTutorials(
   }
 }
 
+// Salva as imagens de prova social (carrossel), uma URL por linha.
+export async function saveProof(
+  _prev: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const images = String(formData.get("proof_images") ?? "").trim();
+  try {
+    await setSetting("proof_images", images);
+    revalidatePath("/admin");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { error: (err as Error).message ?? "Falha ao salvar." };
+  }
+}
+
 // Salva a URL (e segredo) do webhook de saída.
 export async function saveWebhook(
   _prev: SettingsState,
