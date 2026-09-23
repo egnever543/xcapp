@@ -75,3 +75,43 @@ export function clearLead(app: string) {
     // Ignora.
   }
 }
+
+// ===== GCLID (Google Ads) =====
+// Guarda o gclid/gbraid/wbraid capturado na URL do anúncio (validade ~90 dias),
+// para anexar à compra e usar nas conversões offline.
+const GCLID_KEY = "xc_gclid";
+const GCLID_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+// Lê da URL atual e salva (chamar no carregamento das páginas do app).
+export function captureGclid() {
+  if (typeof window === "undefined") return;
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const g = p.get("gclid") || p.get("gbraid") || p.get("wbraid");
+    if (!g) return;
+    window.localStorage.setItem(
+      GCLID_KEY,
+      JSON.stringify({ g, at: Date.now() }),
+    );
+  } catch {
+    // Ignora.
+  }
+}
+
+// Retorna o gclid salvo (se ainda válido).
+export function getGclid(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = window.localStorage.getItem(GCLID_KEY);
+    if (!raw) return "";
+    const d = JSON.parse(raw) as { g: string; at: number };
+    if (!d?.g || typeof d.at !== "number") return "";
+    if (Date.now() - d.at > GCLID_MAX_AGE_MS) {
+      window.localStorage.removeItem(GCLID_KEY);
+      return "";
+    }
+    return d.g;
+  } catch {
+    return "";
+  }
+}

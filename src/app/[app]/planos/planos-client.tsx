@@ -7,7 +7,7 @@ import {
   formatPrice,
   type Package,
 } from "@/lib/packages";
-import { getLead, saveLead, type StoredLead } from "@/lib/lead-storage";
+import { getLead, saveLead, captureGclid, getGclid, type StoredLead } from "@/lib/lead-storage";
 import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
 import { WhatsAppButton } from "../../whatsapp-button";
@@ -103,6 +103,7 @@ export function PlanosClient({
   // Lê o lead do localStorage. Sem dados válidos (ou expirados), volta para
   // a tela inicial para preencher o formulário.
   useEffect(() => {
+    captureGclid(); // guarda o gclid do anúncio, se houver
     const stored = getLead(app.slug);
     if (!stored) {
       router.replace(`/${app.slug}`);
@@ -215,6 +216,7 @@ export function PlanosClient({
           packageId: pkg.id,
           phone: lead?.phone,
           email: lead?.email,
+          gclid: getGclid() || undefined,
         }),
       });
       const d = await r.json();

@@ -10,12 +10,14 @@ export async function POST(request: Request) {
   let phone = "";
   let email = "";
   let app = "";
+  let gclid = "";
   try {
     const body = await request.json();
     packageId = String(body?.packageId ?? "");
     phone = String(body?.phone ?? "");
     email = String(body?.email ?? "");
     app = String(body?.app ?? "");
+    gclid = String(body?.gclid ?? "");
   } catch {
     // corpo inválido
   }
@@ -50,6 +52,7 @@ export async function POST(request: Request) {
           packageLabel: `${pkg.durationLabel} · ${pkg.telas} tela(s)${pkg.adult ? " · +18" : ""}`,
           amount: priceReais(pkg.priceCents),
           app: app || undefined,
+          gclid: gclid || undefined,
         });
       } catch (err) {
         console.error("Erro ao registrar a compra:", err);
