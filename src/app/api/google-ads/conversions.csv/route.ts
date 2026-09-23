@@ -2,8 +2,9 @@ import { listPaidSince } from "@/lib/db";
 import { buildConversionsCsv } from "@/lib/conversions-feed";
 
 // Feed de conversões offline do Google Ads (importação agendada via HTTPS).
-// O Google busca este CSV com Basic Auth (usuário/senha definidos abaixo) e
-// recebe as vendas PAGAS das últimas 24h a cada chamada.
+// O Google exige que a URL termine em ".csv", por isso esta rota fica em
+// /api/google-ads/conversions.csv. Busca com Basic Auth e devolve as vendas
+// PAGAS das últimas 24h a cada chamada.
 //
 // Configuração (variáveis de ambiente):
 //   GOOGLE_CONV_FEED_USER — usuário do Basic Auth
