@@ -12,6 +12,7 @@ import { darken } from "@/lib/color";
 import type { AppConfig } from "@/lib/db";
 import { WhatsAppButton } from "../../whatsapp-button";
 import { InstallGuide } from "./install-guide";
+import { ProofCarousel } from "./proof-carousel";
 import { ExitIntent } from "../exit-intent";
 
 // Perguntas frequentes exibidas na página de compra.
@@ -69,9 +70,11 @@ type PixData = {
 export function PlanosClient({
   app,
   tutorials = { remoteUrl: "", tvUrl: "" },
+  proofImages = [],
 }: {
   app: AppConfig;
   tutorials?: { remoteUrl: string; tvUrl: string };
+  proofImages?: string[];
 }) {
   const router = useRouter();
   // Contatos de WhatsApp derivados da config do app (venda e suporte usam o
@@ -490,6 +493,9 @@ export function PlanosClient({
           ))}
         </div>
       </section>
+
+      {/* Provas sociais (carrossel automático) */}
+      {proofImages.length > 0 && <ProofCarousel images={proofImages} />}
 
       {/* Planos */}
       <section id="planos" className="mx-auto w-full max-w-6xl px-6 pt-8 pb-16">

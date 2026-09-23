@@ -7,12 +7,28 @@ export const DEFAULT_GOOGLE_ADS_ID = "AW-16999732658";
 export const DEFAULT_TUTORIAL_REMOTE_URL = "https://youtu.be/OeWl9VX2UE4";
 export const DEFAULT_TUTORIAL_TV_URL = "https://youtu.be/8cbPeLCofXA";
 
+// Provas sociais (carrossel) — imagens padrão; podem ser trocadas no painel.
+export const DEFAULT_PROOF_IMAGES = Array.from(
+  { length: 8 },
+  (_, i) => `https://convertedigitais.com.br/testes1/criativos/${i + 1}.jpeg`,
+);
+
 export type SiteSettings = {
   googleAdsId: string; // AW-XXXXXXXXX (tag base)
   conversionLabel: string; // rótulo da conversão (parte após a barra)
   tutorialRemoteUrl: string; // tutorial de login: instalação remota
   tutorialTvUrl: string; // tutorial de login: instalação na própria TV
+  proofImages: string[]; // imagens de prova social (carrossel)
 };
+
+// Divide o texto salvo (uma URL por linha) em lista.
+function parseLines(value: string | undefined): string[] {
+  if (value == null) return [];
+  return value
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 // Lê as configurações do banco, com fallback para env/default. Nunca lança.
 export async function loadSettings(): Promise<SiteSettings> {
@@ -39,6 +55,10 @@ export async function loadSettings(): Promise<SiteSettings> {
       stored.tutorial_tv_url != null
         ? stored.tutorial_tv_url
         : DEFAULT_TUTORIAL_TV_URL,
+    proofImages:
+      stored.proof_images != null
+        ? parseLines(stored.proof_images)
+        : DEFAULT_PROOF_IMAGES,
   };
 }
 
